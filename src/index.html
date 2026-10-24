@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block War 3D</title>
+<meta name="description" content="Block War 3D: a blocky first-person zombie shooter you play in the browser. Survive the horde, earn money, buy guns, beat the bosses.">
+<meta name="theme-color" content="#16202e">
+<meta property="og:title" content="Block War 3D">
+<meta property="og:description" content="A blocky first-person zombie shooter. Free, in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mr-pythoneer.github.io/block-war-3d/">
+<meta property="og:image" content="https://mr-pythoneer.github.io/block-war-3d/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<!--FAVICON-->
+<style>
+  :root {
+    --lime: #d3ff66;
+    --lime-dim: #9cda00;
+    --red: #b3140e;
+    --red-deep: #7a0b07;
+    --gold: #ffe500;
+    --panel: rgba(12, 15, 19, 0.88);
+    --panel-solid: #12161b;
+    --line: rgba(255, 255, 255, 0.12);
+    --text: #eef2e6;
+    --dim: #97a092;
+    --danger: #ff4b3e;
+    --heal: #5dff8a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #07090c; color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    user-select: none; -webkit-user-select: none;
+  }
+  canvas#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hidden { display: none !important; }
+  .num { font-variant-numeric: tabular-nums; }
+  kbd {
+    display: inline-block; min-width: 1.6em; padding: 1px 6px; border-radius: 4px;
+    background: #1d232a; border: 1px solid #39424c; border-bottom-width: 3px;
+    font: 600 12px/1.4 ui-monospace, Menlo, monospace; color: #e8eee0; text-align: center;
+  }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #stats { position: absolute; left: 16px; top: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .stat {
+    display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px; min-width: 190px;
+  }
+  .stat .label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); width: 64px; }
+  .stat .val { font-size: 22px; font-weight: 800; }
+  .stat.money .val { color: var(--gold); }
+  .stat.hp .val { color: var(--lime); }
+  .stat.hp.low .val { color: var(--danger); }
+  .stat.bounty .val { color: #ff6a5e; }
+  .hpbar { flex: 1; height: 8px; background: #2a1410; border-radius: 2px; overflow: hidden; min-width: 70px; }
+  .hpbar i { display: block; height: 100%; width: 50%; background: var(--lime); transition: width .15s; }
+  .stat.hp.low .hpbar i { background: var(--danger); }
+  .stat.mana .val { color: #5cc8ff; }
+  .stat.mana .hpbar { background: #0d1f33; }
+  .stat.mana .hpbar i { background: #3aa0ff; transition: width .08s linear; }
+  .stat.mana.empty .val { color: #6b7d8f; }
+  .stat.mana.empty .hpbar i { background: #4a5a6a; }
+
+  #bossbars { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); width: clamp(240px, calc(100vw - 520px), 560px); display: flex; flex-direction: column; gap: 8px; }
+  .bossbar { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px 8px; }
+  .bossbar .bname { display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 5px; }
+  .bossbar .bname small { color: var(--dim); font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .bossbar .track { height: 10px; background: #1b0f0d; border-radius: 2px; overflow: hidden; }
+  .bossbar .fill { height: 100%; background: var(--danger); transition: width .12s; }
+
+  #radarWrap { position: absolute; right: 16px; top: 16px; padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  #radar { display: block; width: 216px; height: 162px; image-rendering: pixelated; border-radius: 2px; }
+  #radarWrap .cap { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); margin-top: 4px; letter-spacing: .04em; }
+
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+  #crosshair i { position: absolute; background: rgba(255,255,255,.9); box-shadow: 0 0 2px #000; }
+  #crosshair i:nth-child(1) { left: -1px; top: -14px; width: 2px; height: 8px; }
+  #crosshair i:nth-child(2) { left: -1px; top: 6px; width: 2px; height: 8px; }
+  #crosshair i:nth-child(3) { top: -1px; left: -14px; width: 8px; height: 2px; }
+  #crosshair i:nth-child(4) { top: -1px; left: 6px; width: 8px; height: 2px; }
+  #crosshair.dot i { opacity: .25; }
+  #hitmarker { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px; opacity: 0; transition: opacity .12s; }
+  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 12px; top: -2px; width: 2px; height: 30px; background: #fff; transform: rotate(45deg); box-shadow: 0 0 2px #000; }
+  #hitmarker::after { transform: rotate(-45deg); }
+  #hitmarker.kill::before, #hitmarker.kill::after { background: var(--danger); }
+  #hitmarker.on { opacity: 1; transition: none; }
+
+  #bottom { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 14px; align-items: flex-end; }
+  .slots { display: flex; gap: 6px; }
+  .slot {
+    position: relative; width: clamp(50px, 5.5vw, 78px); padding: 6px 6px 5px; border-radius: 6px; overflow: hidden;
+    background: var(--panel); border: 1px solid var(--line);
+  }
+  .slot .k { position: absolute; top: 4px; left: 6px; font: 700 11px ui-monospace, Menlo, monospace; color: var(--dim); }
+  .slot .n { margin-top: 14px; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot .s { font-size: 11px; color: var(--dim); white-space: nowrap; }
+  .slot.on { border-color: var(--lime); box-shadow: inset 0 0 0 1px var(--lime); }
+  .slot.on .k { color: var(--lime); }
+  .slot.locked { opacity: .42; }
+  .slot .cd { position: absolute; left: 0; bottom: 0; width: 100%; height: 0; background: rgba(255,255,255,.12); }
+  .slot.ready .s { color: var(--lime); }
+  .slot.active .s { color: #7fe3ff; }
+
+  #extras { position: absolute; left: 16px; bottom: 92px; display: flex; flex-direction: column; gap: 6px; }
+  .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .pips { display: inline-flex; gap: 3px; }
+  .pips b { width: 10px; height: 10px; background: #2b2b2b; border: 1px solid #555; }
+  .pips b.on { background: #e9e9e9; border-color: #fff; }
+  .mbar { width: 90px; height: 7px; background: #0f2a2a; border-radius: 2px; overflow: hidden; }
+  .mbar i { display: block; height: 100%; background: #00fff9; }
+
+  #hint { position: absolute; right: 16px; top: 214px; font-size: 12px; color: var(--dim); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; display: flex; gap: 10px; }
+  #toast { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); font-weight: 700; font-size: 16px; padding: 8px 14px; border-radius: 6px; background: rgba(0,0,0,.6); opacity: 0; transition: opacity .25s; white-space: nowrap; }
+  #toast.on { opacity: 1; }
+  #clickPrompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); padding: 10px 16px; border-radius: 6px; background: rgba(0,0,0,.7); border: 1px solid var(--lime); color: var(--lime); font-weight: 800; letter-spacing: .04em; }
+  #banner { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity .4s; width: max-content; max-width: calc(100vw - 32px); }
+  #banner.on { opacity: 1; }
+  #banner .big { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: clamp(26px, 5.2vw, 72px); white-space: nowrap; color: #e3241b; text-shadow: 0 3px 0 #3d0402, 0 0 30px rgba(255,40,20,.35); letter-spacing: .02em; }
+  #banner .sub { margin-top: 6px; font-size: 16px; font-weight: 600; color: #f3e9e4; text-shadow: 0 1px 3px #000; }
+
+  #popups { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .pop { position: absolute; font-weight: 800; font-size: 18px; color: var(--gold); text-shadow: 0 2px 0 #4a3a00, 0 0 6px #000; transform: translate(-50%, -50%); white-space: nowrap; }
+
+  #vignette, #healfx, #frost, #goofx, #scope { position: fixed; inset: 0; pointer-events: none; }
+  #goofx { background: radial-gradient(ellipse at center, transparent 45%, rgba(90, 220, 30, .7) 100%); opacity: 0; }
+  #vignette { background: radial-gradient(ellipse at center, transparent 45%, rgba(190, 0, 0, .75) 100%); opacity: 0; }
+  #healfx { background: radial-gradient(ellipse at center, transparent 50%, rgba(60, 255, 120, .45) 100%); opacity: 0; }
+  #frost { background: radial-gradient(ellipse at center, transparent 40%, rgba(220, 240, 255, .85) 100%); opacity: 0; }
+  #scope { background: radial-gradient(circle at center, transparent 0, transparent 33vmin, #000 33.3vmin); }
+  #scope::before, #scope::after { content: ""; position: absolute; background: #000; }
+  #scope::before { left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; }
+  #scope::after { top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; }
+
+  /* ---------- Screens ---------- */
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .screen.dim { background: rgba(5, 7, 9, .72); }
+  .card {
+    background: var(--panel-solid); border: 1px solid var(--line); border-radius: 10px;
+    padding: 22px 26px; max-width: 920px; width: 100%; max-height: calc(100vh - 32px); overflow: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  }
+  h1.title {
+    margin: 0; font-family: Georgia, "Times New Roman", serif; font-weight: 700;
+    font-size: clamp(54px, 10vw, 128px); line-height: .95; color: #c81a12; letter-spacing: .01em;
+    text-shadow: 0 5px 0 #3d0402, 0 10px 40px rgba(0,0,0,.7);
+  }
+  .tag { margin-top: 10px; font-size: 14px; letter-spacing: .32em; text-transform: uppercase; color: var(--lime); text-shadow: 0 2px 6px #000; }
+  #title { flex-direction: column; text-align: center; background: linear-gradient(180deg, rgba(5,7,9,.15) 0%, rgba(5,7,9,.0) 40%, rgba(5,7,9,.78) 100%); }
+  .btn {
+    pointer-events: auto; cursor: pointer; border: 0; border-radius: 6px;
+    font: 700 18px/1 Georgia, "Times New Roman", serif; letter-spacing: .03em;
+    color: #fff3ee; background: var(--red-deep); padding: 16px 30px;
+    box-shadow: 0 4px 0 #3d0402, 0 10px 24px rgba(0,0,0,.5);
+  }
+  .btn:hover { background: #8f0f09; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #3d0402; }
+  .btn.big { font-size: 26px; padding: 22px 46px; margin-top: 34px; }
+  .btn.ghost { background: #1d232a; color: var(--text); box-shadow: 0 3px 0 #0b0e11; font-family: inherit; font-size: 15px; padding: 11px 18px; }
+  .btn.ghost:hover { background: #262e36; }
+  .controls { margin-top: 26px; display: grid; grid-template-columns: repeat(3, auto); gap: 8px 26px; justify-content: center; font-size: 13px; color: #d9e0d2; text-shadow: 0 1px 3px #000; }
+  .controls div { display: flex; gap: 8px; align-items: center; }
+  .best { margin-top: 16px; font-size: 13px; color: var(--dim); }
+
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  h2 { margin: 0 0 4px; font-family: Georgia, "Times New Roman", serif; font-size: 34px; font-weight: 700; }
+  .muted { color: var(--dim); font-size: 13px; }
+  .setting { display: grid; grid-template-columns: 150px 1fr 48px; gap: 12px; align-items: center; margin: 12px 0; font-size: 14px; }
+  input[type=range] { width: 100%; accent-color: var(--lime); }
+
+  /* Shop: echoes the original Scratch shop (lime price cards) */
+  #shop .card { max-width: 980px; }
+  .shopHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 14px; }
+  .shopHead .money { font-size: 28px; font-weight: 800; color: var(--gold); }
+  .tabs { display: flex; gap: 6px; }
+  .tab { pointer-events: auto; cursor: pointer; border: 1px solid var(--line); background: #1a2026; color: var(--text); border-radius: 6px; padding: 8px 14px; font-weight: 700; font-size: 14px; }
+  .tab.on { background: var(--lime); color: #142000; border-color: var(--lime); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .item {
+    pointer-events: auto; cursor: pointer; position: relative; text-align: left;
+    display: grid; grid-template-columns: 112px 1fr; gap: 10px; align-items: center;
+    background: #99ec00; color: #102000; border: 0; border-radius: 6px; padding: 10px 12px 10px 10px;
+    box-shadow: 0 3px 0 #4f7a00; font-family: inherit;
+  }
+  .item:hover { background: #a9f51c; }
+  .item .thumb { width: 112px; height: 84px; border-radius: 4px; background: #7fc400; display: block; object-fit: contain; }
+  .item .price { font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: 24px; color: #000; }
+  .item .iname { font-weight: 800; font-size: 15px; margin-top: 2px; }
+  .item .idesc { font-size: 12.5px; line-height: 1.3; margin-top: 3px; color: #1d3300; }
+  .item .ikey { position: absolute; top: 8px; right: 10px; }
+  .item.owned { background: #2c3a1a; color: #cfe0b5; box-shadow: 0 3px 0 #151d0b; cursor: default; }
+  .item.owned .price { color: #95a87a; text-decoration: line-through; }
+  .item.owned .idesc { color: #a3b48a; }
+  .item.owned .thumb { background: #3a4b22; }
+  .item .stamp { display: none; position: absolute; right: 10px; bottom: 8px; font-weight: 800; font-size: 12px; letter-spacing: .12em; color: var(--lime); }
+  .item.owned .stamp { display: block; }
+  .item.poor .price { color: #7a1c10; }
+  .item.shake { animation: shake .35s; }
+  @keyframes shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+  .shopFoot { margin-top: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  #shopMsg { font-weight: 800; color: var(--danger); min-height: 1.2em; }
+  #shopMsg.good { color: var(--lime); }
+  .newtag { font-size: 11px; color: var(--gold); margin-left: 2px; }
+  .tab.on .newtag { color: #3a5a00; }
+
+  .info h3 { margin: 18px 0 6px; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--lime); }
+  .info p, .info li { font-size: 14px; line-height: 1.55; color: #d6ddd0; }
+  .info ul { margin: 0; padding-left: 18px; }
+  .info .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  .info table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  .info td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: #d6ddd0; }
+  .info td:first-child { white-space: nowrap; font-weight: 700; color: var(--text); }
+
+  #over h2 { font-size: 64px; color: #c81a12; text-shadow: 0 4px 0 #3d0402; }
+  .statsGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0 20px; }
+  .statsGrid div { background: #1a2026; border-radius: 6px; padding: 12px; }
+  .statsGrid b { display: block; font-size: 26px; }
+  .statsGrid span { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #07090c; color: var(--dim); font-size: 14px; }
+
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+    .info .cols { grid-template-columns: 1fr; }
+    #radarWrap { display: none; }
+    .controls { grid-template-columns: repeat(2, auto); }
+  }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="stats">
+    <div class="stat money"><span class="label">Money</span><span class="val num" id="money">0</span></div>
+    <div class="stat hp" id="hpStat"><span class="label">Health</span><span class="val num" id="hp">0</span><span class="hpbar"><i id="hpbar"></i></span></div>
+    <div class="stat mana" id="manaStat"><span class="label">Mana</span><span class="val num" id="mana">100</span><span class="hpbar"><i id="manabar" style="width:100%"></i></span></div>
+    <div class="stat"><span class="label">Time</span><span class="val num" id="time">0</span></div>
+    <div class="stat bounty hidden" id="bountyStat"><span class="label">Bounty</span><span class="val num" id="bounty">0</span></div>
+  </div>
+  <div id="bossbars"></div>
+  <div id="radarWrap"><canvas id="radar" width="216" height="162"></canvas><div class="cap"><span>battle field</span><span id="zcount">0 zombies</span></div></div>
+  <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+  <div id="hitmarker"></div>
+  <div id="bottom">
+    <div class="slots" id="gunSlots"></div>
+    <div class="slots" id="gadgetSlots"></div>
+  </div>
+  <div id="extras">
+    <div class="pill hidden" id="helmetPill">Helmet <span class="pips" id="helmetPips"></span></div>
+    <div class="pill hidden" id="minionPill">Minion <span class="mbar"><i id="minionBar"></i></span><span id="minionTxt" class="muted"></span></div>
+    <div class="pill hidden" id="regenPill"></div>
+  </div>
+  <div id="hint"><span><kbd>B</kbd> shop</span><span><kbd>I</kbd> info</span><span><kbd>V</kbd> camera</span><span><kbd>Esc</kbd> pause</span></div>
+  <div id="toast"></div>
+  <div id="clickPrompt" class="hidden">Click to aim</div>
+  <div id="banner"><div class="big" id="bannerBig"></div><div class="sub" id="bannerSub"></div></div>
+</div>
+<div id="vignette"></div><div id="healfx"></div><div id="frost"></div><div id="goofx"></div><div id="scope" class="hidden"></div>
+<div id="popups"></div>
+
+<!-- Title -->
+<div id="title" class="screen hidden">
+  <h1 class="title">BLOCK WAR 3D</h1>
+  <div class="tag">Zombie edition</div>
+  <button class="btn big" id="startBtn">START BATTLE</button>
+  <div class="controls">
+    <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp;<kbd>Shift</kbd> sprint</div>
+    <div><kbd>Mouse</kbd> aim</div>
+    <div><kbd>Click</kbd> / <kbd>Space</kbd> fire</div>
+    <div><kbd>1</kbd>–<kbd>6</kbd> <kbd>0</kbd> guns</div>
+    <div><kbd>Q</kbd><kbd>E</kbd><kbd>F</kbd> <kbd>7</kbd><kbd>8</kbd><kbd>9</kbd> gadgets</div>
+    <div><kbd>B</kbd> shop &nbsp;<kbd>I</kbd> info</div>
+  </div>
+  <div class="best" id="bestLine"></div>
+  <div class="best hidden" id="touchNote">Block War 3D needs a keyboard and mouse. Try it on a computer.</div>
+</div>
+
+<!-- Pause -->
+<div id="pause" class="screen dim hidden">
+  <div class="card" style="max-width:520px">
+    <h2>Paused</h2>
+    <div class="muted">Click Resume to grab the mouse again.</div>
+    <div class="setting"><span>Mouse sensitivity</span><input type="range" id="sens" min="0.2" max="3" step="0.05"><span class="num" id="sensV"></span></div>
+    <div class="setting"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05"><span class="num" id="volV"></span></div>
+    <div class="setting"><span>Camera</span><span><button class="btn ghost" id="camBtn"></button></span><span></span></div>
+    <div class="row" style="margin-top:18px">
+      <button class="btn" id="resumeBtn">Resume</button>
+      <button class="btn ghost" id="infoBtn">Info center</button>
+      <button class="btn ghost" id="restartBtn">Restart</button>
+      <button class="btn ghost" id="quitBtn">Quit to title</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shop -->
+<div id="shop" class="screen dim hidden">
+  <div class="card">
+    <div class="shopHead">
+      <div>
+        <h2>Shop</h2>
+        <div class="muted">( pick whatever you want! )</div>
+      </div>
+      <div class="tabs"><button class="tab on" data-page="1">Page 1</button><button class="tab" data-page="2">Page 2</button><button class="tab" data-page="3">Page 3 <span class="newtag">new!</span></button></div>
+      <div class="money num" id="shopMoney">0$</div>
+    </div>
+    <div class="grid" id="shopGrid"></div>
+    <div class="shopFoot">
+      <div id="shopMsg"></div>
+      <div class="row">
+        <span class="muted">Closing the shop starts a new round (+4 HP if the round lasted 20 s, boss timers restart)</span>
+        <button class="btn" id="closeShopBtn">Close shop</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Info center -->
+<div id="info" class="screen dim hidden">
+  <div class="card info">
+    <div class="row between"><div><h2>Info center</h2><div class="muted">(All the info is here)</div></div><button class="btn" id="closeInfoBtn">Back to battle</button></div>
+    <div class="cols">
+      <div>
+        <h3>Controls</h3>
+        <table>
+          <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td></tr>
+          <tr><td><kbd>Shift</kbd></td><td>Sprint. Uses mana (about 4 s from full); it refills when you stop running</td></tr>
+          <tr><td>Mouse</td><td>Aim. Right-click to aim down sights (sniper scope)</td></tr>
+          <tr><td>Click / <kbd>Space</kbd></td><td>Fire (hold for auto)</td></tr>
+          <tr><td><kbd>1</kbd>–<kbd>6</kbd> <kbd>0</kbd> / wheel</td><td>Pistol, Machine gun, OP gun, Sniper, Snow gun, Shotgun, Laser gun</td></tr>
+          <tr><td><kbd>Q</kbd> <kbd>E</kbd> <kbd>F</kbd></td><td>TNT (every 3.5 s), Freeze bomb (every 10 s), Land mine (3 a round)</td></tr>
+          <tr><td><kbd>7</kbd> <kbd>8</kbd> <kbd>9</kbd></td><td>Port a fortress, Turret, Shield</td></tr>
+          <tr><td><kbd>B</kbd> / <kbd>I</kbd></td><td>Shop / this page</td></tr>
+          <tr><td><kbd>V</kbd></td><td>First / third person</td></tr>
+        </table>
+        <h3>Money</h3>
+        <p>Money is kills. Mini zombies pay 1, mini zombies with helmets 2, normal zombies 4. Shoot gold ore for 100–250. You start with 500. Reach 1000 to win, then keep going.</p>
+        <h3>Pickups</h3>
+        <ul>
+          <li>Apple: +1 HP. Golden apple: +5 HP.</li>
+          <li>Green laser wall: +2 HP every second you stand in it (up to 30 HP).</li>
+          <li>Red laser wall: hurts you, but shreds zombies. Lure them in.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Bosses</h3>
+        <table>
+          <tr><td>Snow Boss</td><td>35 s into a round. Throws snowballs that knock you back and leaves a snow trail.</td></tr>
+          <tr><td>Wall Boss</td><td>100 s in. Raises stone walls that block you and your bullets.</td></tr>
+          <tr><td>Flame Boss</td><td>200 s in. Clears the horde, burns on touch, throws fireballs.</td></tr>
+          <tr><td>Glide Boss</td><td>Shows up if a round starts while you have exactly 300–305 money.</td></tr>
+        </table>
+        <p>The shop is locked while a boss is alive. Beating any boss starts a new round (other bosses stay). TNT, the turret and the sniper hit bosses 5 times harder.</p>
+        <h3>Shop</h3>
+        <p>Opening the shop ends the round and the horde retreats. Closing it starts a new round: +4 HP (if the round lasted at least 20 s) and the boss timers restart. Some upgrades make the horde bigger, and so does surviving: more zombies at 3, 6 and 10 minutes.</p>
+        <h3>New stuff</h3>
+        <table>
+          <tr><td>Splitter</td><td>Big orange block. Breaks into 3 minis when it dies.</td></tr>
+          <tr><td>Boomer</td><td>Red, with TNT on its chest. Blows up next to you. Shoot it when it's near other zombies.</td></tr>
+          <tr><td>Spitter</td><td>Yellow. Stays back and spits goo that slows you down.</td></tr>
+          <tr><td>Shield guy</td><td>Blocks bullets from the front. Go around it, or use TNT, mines, the sniper or the laser gun.</td></tr>
+          <tr><td>Block King</td><td>Beat 3 bosses and he comes 20 s into the next round. Drops blocks where the red squares are and calls minis.</td></tr>
+        </table>
+        <p>New zombies start showing up the longer you survive.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Game over -->
+<div id="over" class="screen dim hidden">
+  <div class="card" style="max-width:560px; text-align:center">
+    <h2>game over</h2>
+    <div class="statsGrid">
+      <div><b class="num" id="oTime">0</b><span>seconds</span></div>
+      <div><b class="num" id="oMoney">0</b><span>money</span></div>
+      <div><b class="num" id="oKills">0</b><span>kills</span></div>
+    </div>
+    <div class="muted" id="oBest"></div>
+    <div class="row" style="justify-content:center; margin-top:18px">
+      <button class="btn" id="againBtn">START BATTLE</button>
+      <button class="btn ghost" id="titleBtn">Title</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading">Loading…</div>
+
+<!--SCRIPTS-->
+<script src="../vendor/three.min.js"></script>
+<script src="models.js"></script>
+<script src="audio.js"></script>
+<script src="game.js"></script>
+<!--/SCRIPTS-->
+</body>
+</html>
