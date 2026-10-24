@@ -339,7 +339,7 @@
           <tr><td><kbd>V</kbd></td><td>First / third person</td></tr>
         </table>
         <h3>Money</h3>
-        <p>Money is kills. Mini zombies pay 1, mini zombies with helmets 2, normal zombies 4. Shoot gold ore for 100–250. You start with 500. Reach 1000 to win, then keep going.</p>
+        <p>Money is kills: 2 to 6 a zombie, more for the tough ones. Shoot gold ore for 100–250 (yellow on the map). You start with 500. The game never ends; see how long you last.</p>
         <h3>Pickups</h3>
         <ul>
           <li>Apple: +1 HP. Golden apple: +5 HP.</li>
@@ -355,7 +355,7 @@
           <tr><td>Flame Boss</td><td>200 s in. Clears the horde, burns on touch, throws fireballs.</td></tr>
           <tr><td>Glide Boss</td><td>Shows up if a round starts while you have exactly 300–305 money.</td></tr>
         </table>
-        <p>The shop is locked while a boss is alive. Beating any boss starts a new round (other bosses stay). TNT, the turret and the sniper hit bosses 5 times harder.</p>
+        <p>You can shop during boss fights; the bosses wait for you. Beating any boss starts a new round (other bosses stay). TNT, the turret and the sniper hit bosses 5 times harder.</p>
         <h3>Shop</h3>
         <p>Opening the shop ends the round and the horde retreats. Closing it starts a new round: +4 HP (if the round lasted at least 20 s) and the boss timers restart. Some upgrades make the horde bigger, and so does surviving: more zombies at 3, 6 and 10 minutes.</p>
         <h3>New stuff</h3>
@@ -1741,23 +1741,25 @@
   const MANA = { max: 100, drain: 25, regen: 16, delay: 0.8, resume: 25, speed: 1.6 };
 
   // Zombie types = the original "enemy" costumes 1..6 (lives + "move enemy" speeds).
+  // reward = money per kill. Balance v4: was 4 for type 3, 2 for type 2 and 1 for everything else,
+  // which left you on the starter pistol for ages. Tougher zombies now pay more.
   const ZTYPES = {
-    1: { name: "mini", hp: 3, speed: 3 },
-    2: { name: "mini helmet", hp: 3, speed: 2 },
-    3: { name: "normal", hp: 8, speed: 1 },
-    4: { name: "normal helmet", hp: 14, speed: 2 },
-    5: { name: "big", hp: 14, speed: 2.5 },
-    6: { name: "big helmet", hp: 17, speed: 1.5 },
+    1: { name: "mini", hp: 3, speed: 3, reward: 2 },
+    2: { name: "mini helmet", hp: 3, speed: 2, reward: 3 },
+    3: { name: "normal", hp: 8, speed: 1, reward: 4 },
+    4: { name: "normal helmet", hp: 14, speed: 2, reward: 5 },
+    5: { name: "big", hp: 14, speed: 2.5, reward: 5 },
+    6: { name: "big helmet", hp: 17, speed: 1.5, reward: 6 },
     // new zombies, mixed into the horde the longer you survive
-    7: { name: "Splitter", hp: 10, speed: 1.2, reward: 3, at: 20, intro: "Breaks into 3 minis when it dies" },
-    8: { name: "Boomer", hp: 6, speed: 2.2, reward: 2, at: 45, intro: "Blows up next to you. Shoot it near other zombies" },
-    9: { name: "Spitter", hp: 6, speed: 1.4, reward: 3, at: 90, intro: "Spits goo from far away. Goo slows you down" },
-    10: { name: "Shield guy", hp: 10, speed: 1.5, reward: 4, at: 150, intro: "Blocks bullets from the front. Flank it or use TNT" },
+    7: { name: "Splitter", hp: 10, speed: 1.2, reward: 5, at: 20, intro: "Breaks into 3 minis when it dies" },
+    8: { name: "Boomer", hp: 6, speed: 2.2, reward: 3, at: 45, intro: "Blows up next to you. Shoot it near other zombies" },
+    9: { name: "Spitter", hp: 6, speed: 1.4, reward: 4, at: 90, intro: "Spits goo from far away. Goo slows you down" },
+    10: { name: "Shield guy", hp: 10, speed: 1.5, reward: 6, at: 150, intro: "Blocks bullets from the front. Flank it or use TNT" },
   };
   const NEW_TYPES = [7, 8, 9, 10];
   // Money for a gun kill: type 3 pays 4, type 2 pays 2, everything else 1.
   // Kills by laser / shield / sniper / TNT always pay 1 (they used a separate script).
-  const gunReward = (t) => (t >= 7 ? ZTYPES[t].reward : t === 3 ? 4 : t === 2 ? 2 : 1);
+  const killReward = (t) => ZTYPES[t].reward;
   const ZCOLOR = { 1: 0x7bac00, 2: 0x7bac00, 3: 0x9cda00, 4: 0x9cda00, 5: 0x00d9b1, 6: 0x00d9b1, 7: 0xff8a00, 8: 0xe8231a, 9: 0xffd400, 10: 0x9aa3ad };
 
   // Guns by key. Delay = the gun's "wait" + the 0.05 s muzzle flash.
@@ -1795,37 +1797,37 @@
   // Bosses: lives, reward, and when they show up (seconds into a round).
   // 3D: wall/flame/glide speeds were 0.2/0.1/0.1 px per tick, which in 3D is basically standing still.
   const BOSS = {
-    snow: { name: "Snow Boss", hp: [100, 200], speed: 1.6, reward: [60, 80], shot: "eSnow", sfx: "snow_throw", clears: false, contact: false },
-    wall: { name: "Wall Boss", hp: [200, 300], speed: 0.9, reward: [120, 150], shot: null, clears: false, contact: false },
-    flame: { name: "Flame Boss", hp: [400, 500], speed: 0.6, reward: [200, 250], shot: "fire", sfx: "fire_throw", clears: true, contact: true },
-    glide: { name: "Glide Boss", hp: [600, 700], speed: 0.6, reward: [250, 300], shot: "bLaser", sfx: "laser_shot", clears: true, contact: false },
+    snow: { name: "Snow Boss", hp: [100, 200], speed: 1.6, reward: [60, 80], shot: "eSnow", sfx: "snow_throw", clears: false, contact: false, hint: "Its snowballs knock you back" },
+    wall: { name: "Wall Boss", hp: [200, 300], speed: 0.9, reward: [120, 150], shot: null, clears: false, contact: false, hint: "It raises stone walls around you" },
+    flame: { name: "Flame Boss", hp: [400, 500], speed: 0.6, reward: [200, 250], shot: "fire", sfx: "fire_throw", clears: true, contact: true, hint: "Burns on touch. The horde backs off" },
+    glide: { name: "Glide Boss", hp: [600, 700], speed: 0.6, reward: [250, 300], shot: "bLaser", sfx: "laser_shot", clears: true, contact: false, hint: "Watch out for its red lasers" },
     // new: comes 20 s into the round after you've beaten 3 bosses
-    king: { name: "Block King", hp: [800, 900], speed: 0.8, reward: [400, 500], shot: null, clears: false, contact: true },
+    king: { name: "Block King", hp: [800, 900], speed: 0.8, reward: [400, 500], shot: null, clears: false, contact: true, hint: "Get off the red squares" },
   };
   const BOSS_AT = { snow: 35, wall: 100, flame: 200 };
 
   // Shop: same two pages, prices and wording as the original shop cards.
   const SHOP = [
-    { id: "op", page: 1, price: 1000, name: "OP gun", desc: "OP fire rate", key: "3" },
-    { id: "tnt", page: 1, price: 750, name: "TNT", desc: "Explosive", key: "Q" },
+    { id: "op", page: 1, price: 900, name: "OP gun", desc: "OP fire rate", key: "3" },
+    { id: "tnt", page: 1, price: 500, name: "TNT", desc: "Explosive", key: "Q" },
     { id: "heal", page: 1, price: 15, name: "Heals", desc: "Heals 1 hp", repeat: true },
-    { id: "mg", page: 1, price: 750, name: "Machine gun", desc: "Faster fire rate", key: "2" },
-    { id: "shield", page: 1, price: 1500, name: "SHIELD", desc: "5 s energy shield: blocks boss shots, shreds zombies", key: "9" },
-    { id: "turret", page: 1, price: 2000, name: "Turret", desc: "Spinning sentry, 500 shots", key: "8" },
-    { id: "sniper", page: 1, price: 1500, name: "Sniper", desc: "15 damage a shot, right-click to scope", key: "4" },
-    { id: "fortress", page: 1, price: 4000, name: "Port a fortress", desc: "Barricade that holds for 100 s", key: "7" },
+    { id: "mg", page: 1, price: 400, name: "Machine gun", desc: "Faster fire rate", key: "2" },
+    { id: "shield", page: 1, price: 1000, name: "SHIELD", desc: "5 s energy shield: blocks boss shots, shreds zombies", key: "9" },
+    { id: "turret", page: 1, price: 1500, name: "Turret", desc: "Spinning sentry, 500 shots", key: "8" },
+    { id: "sniper", page: 1, price: 1000, name: "Sniper", desc: "15 damage a shot, right-click to scope", key: "4" },
+    { id: "fortress", page: 1, price: 3000, name: "Port a fortress", desc: "Barricade that holds for 100 s", key: "7" },
     { id: "snow", page: 2, price: 100, name: "Snow gun", desc: "Shoots snow balls", key: "5" },
     { id: "bounty", page: 2, price: 150, name: "Bounty hunt", desc: "Kill the target to get money", repeat: true },
     { id: "minion", page: 2, price: 500, name: "Minion", desc: "Get a helper" },
-    { id: "helmet", page: 2, price: 3000, name: "Helmet", desc: "Takes 5 hits, halves damage" },
-    { id: "damage", page: 2, price: 5000, name: "Damage", desc: "*2 damage. The horde grows." },
-    { id: "selfheal", page: 2, price: 5000, name: "Self heal", desc: "Regenerate up to 25 HP. The horde grows." },
-    { id: "armored", page: 2, price: 5000, name: "Armored", desc: "Armor plating, regenerate up to 50 HP" },
+    { id: "helmet", page: 2, price: 2000, name: "Helmet", desc: "Takes 5 hits, halves damage" },
+    { id: "damage", page: 2, price: 4000, name: "Damage", desc: "*2 damage. The horde grows." },
+    { id: "selfheal", page: 2, price: 4000, name: "Self heal", desc: "Regenerate up to 25 HP. The horde grows." },
+    { id: "armored", page: 2, price: 4000, name: "Armored", desc: "Armor plating, regenerate up to 50 HP" },
     // page 3: new stuff
-    { id: "shotgun", page: 3, price: 1200, name: "Shotgun", desc: "Shoots 7 bullets at once", key: "6" },
-    { id: "laser", page: 3, price: 2500, name: "Laser gun", desc: "Shoots the red laser. Goes through every zombie", key: "0" },
-    { id: "mine", page: 3, price: 600, name: "Land mine", desc: "3 mines a round. Boom when they step on it", key: "F" },
-    { id: "freeze", page: 3, price: 1200, name: "Freeze bomb", desc: "Freezes zombies for 4 s", key: "E" },
+    { id: "shotgun", page: 3, price: 700, name: "Shotgun", desc: "Shoots 7 bullets at once", key: "6" },
+    { id: "laser", page: 3, price: 1800, name: "Laser gun", desc: "Shoots the red laser. Goes through every zombie", key: "0" },
+    { id: "mine", page: 3, price: 400, name: "Land mine", desc: "3 mines a round. Boom when they step on it", key: "F" },
+    { id: "freeze", page: 3, price: 800, name: "Freeze bomb", desc: "Freezes zombies for 4 s", key: "E" },
     { id: "lucky", page: 3, price: 400, name: "Lucky block", desc: "Could be anything!!", repeat: true },
   ];
 
@@ -1893,7 +1895,7 @@
     regenSelf: 0, regenArmor: 0,
     bountyTime: 0, bountyAcc: 0, bountySpawnT: 0,
     appleT: 0, godT: 0, goldT: 0, goldCount: 0,
-    wonShown: false,
+    goldHinted: false,
     trauma: 0, recoil: 0, ads: 0, walkPhase: 0,
   };
   const P = { pos: V3(), yaw: -Math.PI / 2, pitch: 0, knock: V3(), moving: 0 };
@@ -2541,7 +2543,7 @@
     SFX.play("hit", { x: e.x, z: e.z, vol: 0.8 });
     emit(e.x, e.mesh.position.y + e.h * 0.6, e.z, [0x2f4a10, ZCOLOR[e.type], ZCOLOR[e.type]], 3, 2.5, 0.08, 0.4);
     if (e.hp < 1) {
-      const pay = earn(how === "gun" ? gunReward(e.type) : 1);
+      const pay = earn(killReward(e.type)); // laser, TNT and sniper kills used to pay only 1
       G.kills++;
       popup("+" + pay, e.x, e.mesh.position.y + e.h + 0.2, e.z);
       killZombie(e);
@@ -2782,7 +2784,7 @@
     addBossBar(b);
     SFX.play("warning");
     SFX.play("boss_roar", { x: b.x, z: b.z, vol: 1.2 });
-    banner(def.name.toUpperCase(), "Shop locked until it's beaten");
+    banner(def.name.toUpperCase(), def.hint);
     if (def.clears) stopWave(); // Flame and Glide bosses broadcast "Stop wave"
     G.trauma = Math.min(1, G.trauma + 0.4);
     return b;
@@ -3118,6 +3120,7 @@
     mesh.rotation.y = Math.random() * TAU;
     scene.add(mesh);
     golds.push({ mesh, x: s.x, z: s.z, r: mesh.userData.radius || 0.4 * size + 0.2 });
+    if (!G.goldHinted) { G.goldHinted = true; banner("GOLD ORE", "Shoot it for 100-250 money (yellow on the map)", 3.5); }
   }
   function mineGold(g) {
     if (g.dead) return;
@@ -3488,7 +3491,6 @@
     if (G.selfheal && G.hp < 25) { G.regenSelf += dt; if (G.regenSelf >= 1) { G.regenSelf = 0; healPlayer(1, null); } }
     if (G.armored && G.hp < 50) { G.regenArmor += dt; if (G.regenArmor >= 5) { G.regenArmor = 0; healPlayer(1, null); } }
     // win at 1000 money
-    if (!G.wonShown && G.money >= 1000) { G.wonShown = true; banner("YOU WIN", "1000 money. Keep going if you want.", 4); SFX.play("win"); }
     // ADS / scope
     const wantAds = mouse[2] && locked && !G.sprinting;
     G.ads = lerp(G.ads, wantAds ? 1 : 0, 1 - Math.pow(0.0001, dt));
@@ -3847,7 +3849,6 @@
   document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => { shopPage = +t.dataset.page; SFX.play("ui_click"); renderShop(); }));
 
   function openShop() {
-    if (bossAlive()) { SFX.play("deny"); toast("Shop locked. Beat the boss first!"); return; }
     if (!thumbsDone) makeThumbs();
     G.mode = "shop";
     unlockPointer();
@@ -3879,6 +3880,8 @@
     const earned = G.round.t >= 20; // balance: no free +4 HP from opening and closing the shop over and over
     startWave(earned);
     if (!earned) toast("No +4 HP: the round was shorter than 20 s");
+    // a Flame or Glide Boss still out keeps the horde away
+    if (bosses.some((b) => !b.dying && !b.retreating && b.def.clears)) G.wave = false;
     roundReset(null);
     if (G.owned.minion && !minion.alive) spawnMinion();
     // Lucky block results
@@ -3991,7 +3994,7 @@
     wipeWorld();
     Object.assign(G, {
       money: 500, hp: 14, time: 0, timeAcc: 0, kills: 0, owned: {}, gun: 1, dmgMult: 1, helmet: 0, armored: false, selfheal: false,
-      spawners: 1, fireT: 0.3, tntCd: 0, regenSelf: 0, regenArmor: 0, bountyTime: 0, bountySpawnT: 0, wonShown: false, trauma: 0, recoil: 0, ads: 0,
+      spawners: 1, fireT: 0.3, tntCd: 0, regenSelf: 0, regenArmor: 0, bountyTime: 0, bountySpawnT: 0, goldHinted: false, trauma: 0, recoil: 0, ads: 0,
       minesLeft: 0, freezeCd: 0, moneyMult: 1, moneyMultT: 0, bossKills: 0, kingDue: false, kingWarned: false, seenZ: {}, slowT: 0, luckyZombies: 0, pendingApples: 0,
     mana: 100, manaDelay: 0, exhausted: false, sprinting: false, sprintK: 0, hordeGrow: 0,
     });

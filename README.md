@@ -43,11 +43,11 @@ While working on it, serve the folder (`python3 -m http.server 8777`) and open
 `http://localhost:8777/src/index.html`.
 
 ## Kept from the original
-- Money = kills (type 3 zombies pay 4, mini helmets 2, the rest 1; gold ore 100–250). Start with 500. 1000 = you win (keep playing).
+- Money = kills, gold ore pays 100–250, and you start with 500. (The Scratch version said "you win" at 1000; this one is endless.)
 - Six zombie types with the original lives and speeds, picked by the same random chain.
 - Health 14 + 4 at the start. Every "Start wave" (closing the shop) gives +4.
 - Damage cooldowns: zombies, fire balls and the Flame Boss 1 per second. Laser, boss laser and bounty every 1.5 s. Helmet halves damage.
-- Bosses each round: Snow Boss at 35 s, Wall Boss at 100 s, Flame Boss at 200 s. Glide Boss only when a round starts at exactly 300–305 money. Beating any boss restarts the round. Flame and Glide clear the horde. The shop is locked during boss fights.
+- Bosses each round: Snow Boss at 35 s, Wall Boss at 100 s, Flame Boss at 200 s. Glide Boss only when a round starts at exactly 300–305 money. Beating any boss restarts the round. Flame and Glide clear the horde.
 - Turret, sniper and TNT hit bosses ×5. Turret does 500 shots, 3° turn each, then 100 s cooldown. Shield lasts 5 s with a 12.5 s cooldown. Fortress holds 100 s with a warning at 5 s, then 150 s cooldown.
 - Minion copies your trigger, has 100 HP and comes back after 25 s. Damage and Self heal make the horde bigger (extra spawners).
 - Apples +1, golden apples +5. The red laser wall hurts you and shreds zombies; the second laser heals (+5/s).
@@ -77,6 +77,14 @@ New zombies join the horde the longer you survive (from 20 s, 45 s, 90 s, 150 s)
 
 **Block King**: beat 3 bosses and he shows up 20 s into the next round. 800–900 lives, calls up
 minis, drops blocks where red squares appear (2 damage; the blocks stay as cover for 4 s). Pays 100–150.
+
+## Balance changes (v4): faster upgrades, endless
+- **No "you win"** at 1000 money. It's an endless game.
+- **Shop works during boss fights.** Bosses showed up every round and kept the shop locked about 40% of the time, so you sat on the pistol. Bosses wait while you shop; a Flame or Glide Boss still keeps the horde away afterwards.
+- **Every kill pays by zombie type**, whatever killed it: mini 2, mini helmet 3, normal 4, normal helmet 5, big 5, big helmet 6, Splitter 5, Boomer 3, Spitter 4, Shield guy 6. (Was 4 / 2 / 1 for everything else, and 1 for laser, TNT and sniper kills.)
+- **Cheaper gear**: Machine gun 750 → 400, OP gun 1000 → 900, TNT 750 → 500, Sniper and SHIELD 1500 → 1000, Turret 2000 → 1500, Port a fortress 4000 → 3000, Helmet 3000 → 2000, Damage / Self heal / Armored 5000 → 4000, Shotgun 1200 → 700, Laser gun 2500 → 1800, Land mine 600 → 400, Freeze bomb 1200 → 800.
+- A one-time hint tells you to shoot gold ore the first time it appears.
+- Measured with a bot that ignores gold: before, the first gun upgrade took 76–123 s; now the Machine gun is affordable at the start, the Shotgun at about 1 minute, the OP gun at 1–2 minutes.
 
 ## Balance changes (v3)
 - **Bosses don't vanish** when you beat a different boss. The round timer still restarts, and a boss that's already out won't get a twin.
