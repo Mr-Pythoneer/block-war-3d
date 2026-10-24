@@ -25,6 +25,17 @@
   const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
   const tmpV = V3(), tmpV2 = V3(), tmpV3 = V3();
 
+  // Phones / tablets get touch controls. ?mobile=1 or ?desktop=1 forces a mode.
+  const TOUCH = (() => {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.has("mobile")) return true;
+      if (q.has("desktop")) return false;
+      return matchMedia("(pointer: coarse)").matches && !matchMedia("(pointer: fine)").matches;
+    } catch (e) { return false; }
+  })();
+  if (TOUCH) document.body.classList.add("touch");
+
   // ---------------------------------------------------------------- config
   // The Scratch stage was 480x360. 3D: the arena keeps the 4:3 shape at 0.1 m per pixel.
   const ARENA_W = 48, ARENA_D = 36, HX = ARENA_W / 2, HZ = ARENA_D / 2;
@@ -109,7 +120,7 @@
     { id: "mg", page: 1, price: 400, name: "Machine gun", desc: "Faster fire rate", key: "2" },
     { id: "shield", page: 1, price: 1000, name: "SHIELD", desc: "5 s energy shield: blocks boss shots, shreds zombies", key: "9" },
     { id: "turret", page: 1, price: 1500, name: "Turret", desc: "Spinning sentry, 500 shots", key: "8" },
-    { id: "sniper", page: 1, price: 1000, name: "Sniper", desc: "15 damage a shot, right-click to scope", key: "4" },
+    { id: "sniper", page: 1, price: 1000, name: "Sniper", desc: TOUCH ? "15 damage a shot, AIM to scope" : "15 damage a shot, right-click to scope", key: "4" },
     { id: "fortress", page: 1, price: 3000, name: "Port a fortress", desc: "Barricade that holds for 100 s", key: "7" },
     { id: "snow", page: 2, price: 100, name: "Snow gun", desc: "Shoots snow balls", key: "5" },
     { id: "bounty", page: 2, price: 150, name: "Bounty hunt", desc: "Kill the target to get money", repeat: true },
@@ -126,8 +137,9 @@
     { id: "lucky", page: 3, price: 400, name: "Lucky block", desc: "Could be anything!!", repeat: true },
   ];
 
+
   // ---------------------------------------------------------------- settings
-  const settings = { sens: 1, vol: 0.8, third: false };
+  const settings = { sens: 1, vol: 0.8, third: false, shadows: !TOUCH };
   try { Object.assign(settings, JSON.parse(localStorage.getItem("bw3d.settings") || "{}")); } catch (e) { /* private mode */ }
   const saveSettings = () => { try { localStorage.setItem("bw3d.settings", JSON.stringify(settings)); } catch (e) { /* ignore */ } };
   let best = { time: 0, money: 0 };
@@ -135,8 +147,8 @@
 
   // ---------------------------------------------------------------- renderer / scenes
   const canvas = $("view");
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !TOUCH, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, TOUCH ? 1.5 : 2)); // phones: fewer pixels
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.autoClear = false;
@@ -152,6 +164,10 @@
   const env = Models.environment(ARENA_W, ARENA_D);
   scene.add(env.group);
   (env.lights || []).forEach((l) => { scene.add(l); if (l.target) scene.add(l.target); });
+  const moonLight = (env.lights || []).find((l) => l.isDirectionalLight && l.castShadow);
+  if (moonLight && TOUCH) moonLight.shadow.mapSize.set(1024, 1024);
+  function applyShadows() { if (moonLight) moonLight.castShadow = !!settings.shadows; }
+  applyShadows();
 
   // First-person gun lives in its own scene so it never clips into walls.
   const vmScene = new THREE.Scene();
@@ -341,6 +357,20 @@
     for (const b of bosses) if (b.hittable) t = rayCyl(o, d, b.x, b.z, b.r, b.mesh.position.y, b.h, t);
     if (bounty && bounty.visible) t = rayCyl(o, d, bounty.x, bounty.z, bounty.r, 0, bounty.h, t);
     for (const g of golds) t = rayCyl(o, d, g.x, g.z, g.r, 0, g.r * 1.2, t);
+    // touch screens: a little aim assist toward the zombie nearest the crosshair
+    if (TOUCH) {
+      let bestAng = 0.07, pick = null;
+      const consider = (x, y, z, maxD) => {
+        tmpV2.set(x - o.x, y - o.y, z - o.z);
+        const dist = tmpV2.length();
+        if (dist > maxD || dist < 0.5) return;
+        const ang = Math.acos(clamp(tmpV2.dot(d) / dist, -1, 1));
+        if (ang < bestAng && dist < t + 2 && !wallBetween(o.x, o.y, o.z, x, y, z)) { bestAng = ang; pick = [x, y, z]; }
+      };
+      for (const e of zombies) if (!e.dying && e.emerge >= 1) consider(e.x, e.mesh.position.y + e.h * 0.6, e.z, 40);
+      for (const b of bosses) if (b.hittable) consider(b.x, b.mesh.position.y + b.h * 0.5, b.z, 60);
+      if (pick) return out.set(pick[0], pick[1], pick[2]);
+    }
     return out.copy(o).addScaledVector(d, t);
   }
 
@@ -495,7 +525,7 @@
   let locked = false, ignoreUnlockUntil = 0, testMode = false;
   function lockFailed() { if (G.mode === "playing" && !locked && !testMode) pauseGame(); }
   function lockPointer() {
-    if (testMode) return;
+    if (testMode || TOUCH) return;
     try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(lockFailed); } catch (e) { lockFailed(); }
   }
   document.addEventListener("pointerlockerror", lockFailed);
@@ -817,7 +847,7 @@
   }
   // 3D: zombies rise out of the ground at least 8 m away instead of popping in on top of you.
   function spawnFromHorde() {
-    if (zombies.length >= 90) return;
+    if (zombies.length >= (TOUCH ? 70 : 90)) return;
     const s = randomSpot(8);
     spawnZombie(pickSpawnType(), s.x, s.z);
   }
@@ -1739,10 +1769,12 @@
     if (keys.KeyS || keys.ArrowDown) mz -= 1;
     if (keys.KeyD || keys.ArrowRight) mx += 1;
     if (keys.KeyA || keys.ArrowLeft) mx -= 1;
+    if (TOUCH && stick.mag > 0.12) { mx += stick.mx; mz += stick.mz; }
     const f = fwd(tmpV), len = Math.hypot(mx, mz) || 1;
+    const analog = Math.min(1, Math.hypot(mx, mz)); // keyboard = 1, a half-pushed stick walks slower
     const rx = -f.z, rz = f.x; // right vector
-    // sprint: Shift while moving (not while aiming down sights)
-    const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && (mx || mz) && !mouse[2];
+    // sprint: Shift while moving, or the stick pushed all the way (not while aiming down sights)
+    const wantSprint = (keys.ShiftLeft || keys.ShiftRight || (TOUCH && stick.mag > 0.92)) && (mx || mz) && !mouse[2];
     if (wantSprint && !G.exhausted && G.mana > 0) {
       G.sprinting = true;
       G.mana = Math.max(0, G.mana - MANA.drain * dt);
@@ -1756,7 +1788,7 @@
     }
     G.sprintK = lerp(G.sprintK, G.sprinting ? 1 : 0, 1 - Math.pow(0.001, dt));
     const speed = 7 * (G.sprinting ? MANA.speed : 1);
-    let vx = ((f.x * mz + rx * mx) / len) * speed, vz = ((f.z * mz + rz * mx) / len) * speed;
+    let vx = ((f.x * mz + rx * mx) / len) * speed * analog, vz = ((f.z * mz + rz * mx) / len) * speed * analog;
     if (G.ads > 0.5) { vx *= 0.6; vz *= 0.6; }
     if (G.slowT > 0) { G.slowT -= dt; vx *= 0.55; vz *= 0.55; } // spitter goo
     const stepX = (vx + P.knock.x) * dt, stepZ = (vz + P.knock.z) * dt;
@@ -1787,7 +1819,7 @@
     if (G.armored && G.hp < 50) { G.regenArmor += dt; if (G.regenArmor >= 5) { G.regenArmor = 0; healPlayer(1, null); } }
     // win at 1000 money
     // ADS / scope
-    const wantAds = mouse[2] && locked && !G.sprinting;
+    const wantAds = mouse[2] && (locked || TOUCH) && !G.sprinting;
     G.ads = lerp(G.ads, wantAds ? 1 : 0, 1 - Math.pow(0.0001, dt));
   }
 
@@ -2006,7 +2038,9 @@
     }
     const zc = zombies.filter((e) => !e.dying).length;
     if (zc !== hud.zc) { hud.zc = zc; $("zcount").textContent = zc + " zombies"; }
-    const needClick = G.mode === "playing" && !locked;
+    const needClick = G.mode === "playing" && !locked && !TOUCH;
+    const touchOn = TOUCH && G.mode === "playing";
+    if (touchOn !== hud.touchOn) { hud.touchOn = touchOn; show("touchUI", touchOn); if (!touchOn) resetTouch(); }
     if (needClick !== hud.click) { hud.click = needClick; show("clickPrompt", needClick); }
     drawRadar();
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("toast").classList.remove("on"); }
@@ -2220,7 +2254,9 @@
     $("sens").value = settings.sens; $("sensV").textContent = (+settings.sens).toFixed(2);
     $("vol").value = settings.vol; $("volV").textContent = Math.round(settings.vol * 100);
     $("camBtn").textContent = settings.third ? "Third person" : "First person";
+    $("shadowBtn").textContent = settings.shadows ? "On" : "Off (faster)";
   }
+  $("shadowBtn").addEventListener("click", () => { settings.shadows = !settings.shadows; applyShadows(); saveSettings(); syncSettingsUI(); });
   $("sens").addEventListener("input", (e) => { settings.sens = +e.target.value; saveSettings(); syncSettingsUI(); });
   $("vol").addEventListener("input", (e) => { settings.vol = +e.target.value; SFX.setMaster(settings.vol); saveSettings(); syncSettingsUI(); });
   $("camBtn").addEventListener("click", () => { toggleCamera(); syncSettingsUI(); });
@@ -2303,13 +2339,15 @@
     G.mode = "playing";
     startWave(); // 14 + 4 = 18 health, like the original after the green flag
     roundReset(null);
-    banner("BLOCK WAR", "Survive. Kills are money. B opens the shop.", 3.2);
+    banner("BLOCK WAR", TOUCH ? "Survive. Kills are money. SHOP is top right." : "Survive. Kills are money. B opens the shop.", 3.2);
+    if (G.checkRotate) G.checkRotate();
     lockPointer();
   }
   function toTitle() {
     wipeWorld();
     unlockPointer();
     G.mode = "title";
+    show("rotateNote", false);
     show("hud", false);
     show("title", true);
     SFX.heartbeat(false); hud.heart = false;
@@ -2320,8 +2358,7 @@
     if (playerMesh) playerMesh.visible = false;
   }
   $("startBtn").addEventListener("click", startGame);
-  // phones and tablets can't play it (no keyboard / mouse lock)
-  try { if (window.matchMedia("(pointer: coarse)").matches && !window.matchMedia("(pointer: fine)").matches) show("touchNote", true); } catch (e) { /* ignore */ }
+  setupTouch();
 
   // ---------------------------------------------------------------- main loop
   let last = performance.now(), titleT = 0;
@@ -2380,6 +2417,122 @@
     if (G.mode !== "title" && !settings.third && !scoped && G.mode !== "dead") {
       renderer.clearDepth();
       renderer.render(vmScene, camera);
+    }
+  }
+
+  // ---------------------------------------------------------------- touch controls
+  const stick = { id: null, ox: 0, oy: 0, mx: 0, mz: 0, mag: 0 };
+  const look = { id: null, x: 0, y: 0 };
+  const fireTouch = { id: null, x: 0, y: 0 };
+  const STICK_R = 58;
+  function resetTouch() {
+    stick.id = look.id = fireTouch.id = null;
+    stick.mx = stick.mz = stick.mag = 0;
+    $("stickBase").style.display = "none";
+    $("tFire").classList.remove("on");
+    $("tAim").classList.remove("on");
+    mouse[0] = false;
+  }
+  function lookBy(dx, dy) {
+    const k = 0.0062 * settings.sens * (camera.fov / 75);
+    P.yaw -= dx * k;
+    P.pitch = clamp(P.pitch - dy * k, -1.45, 1.45);
+  }
+  function setupTouch() {
+    if (!TOUCH) return;
+    const zone = $("stickZone"), lz = $("lookZone"), base = $("stickBase"), knob = $("stickKnob");
+    const noMenu = (e) => e.preventDefault();
+    document.addEventListener("contextmenu", noMenu);
+    // left thumb: a joystick that appears where you touch
+    zone.addEventListener("pointerdown", (e) => {
+      if (stick.id !== null) return;
+      e.preventDefault();
+      stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY;
+      base.style.display = "block"; base.style.left = e.clientX + "px"; base.style.top = e.clientY + "px";
+      knob.style.transform = "translate(0,0)";
+      $("stickHint").style.display = "none";
+      try { zone.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    zone.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== stick.id) return;
+      let dx = e.clientX - stick.ox, dy = e.clientY - stick.oy;
+      const d = Math.hypot(dx, dy);
+      if (d > STICK_R) { dx *= STICK_R / d; dy *= STICK_R / d; }
+      knob.style.transform = `translate(${dx}px, ${dy}px)`;
+      stick.mx = dx / STICK_R; stick.mz = -dy / STICK_R; stick.mag = Math.min(1, d / STICK_R);
+      base.classList.toggle("sprint", stick.mag > 0.92);
+    });
+    const endStick = (e) => { if (e.pointerId !== stick.id) return; stick.id = null; stick.mx = stick.mz = stick.mag = 0; base.style.display = "none"; base.classList.remove("sprint"); };
+    zone.addEventListener("pointerup", endStick);
+    zone.addEventListener("pointercancel", endStick);
+    // right thumb: drag to look
+    lz.addEventListener("pointerdown", (e) => {
+      if (look.id !== null) return;
+      e.preventDefault();
+      look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
+      try { lz.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    lz.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== look.id || G.mode !== "playing") return;
+      lookBy(e.clientX - look.x, e.clientY - look.y);
+      look.x = e.clientX; look.y = e.clientY;
+    });
+    const endLook = (e) => { if (e.pointerId === look.id) look.id = null; };
+    lz.addEventListener("pointerup", endLook);
+    lz.addEventListener("pointercancel", endLook);
+    // FIRE: hold to shoot; dragging on it aims too
+    const fire = $("tFire");
+    fire.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      fireTouch.id = e.pointerId; fireTouch.x = e.clientX; fireTouch.y = e.clientY;
+      mouse[0] = true; fire.classList.add("on");
+      try { fire.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    fire.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== fireTouch.id || G.mode !== "playing") return;
+      lookBy(e.clientX - fireTouch.x, e.clientY - fireTouch.y);
+      fireTouch.x = e.clientX; fireTouch.y = e.clientY;
+    });
+    const endFire = (e) => { if (e.pointerId !== fireTouch.id) return; fireTouch.id = null; mouse[0] = false; fire.classList.remove("on"); };
+    fire.addEventListener("pointerup", endFire);
+    fire.addEventListener("pointercancel", endFire);
+    // AIM toggles aim-down-sights / the sniper scope
+    $("tAim").addEventListener("pointerdown", (e) => { e.preventDefault(); mouse[2] = !mouse[2]; $("tAim").classList.toggle("on", mouse[2]); });
+    // SHOP / INFO / CAM / pause
+    document.querySelectorAll("#tTop .tbtn").forEach((b) => b.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      if (G.mode !== "playing") return;
+      mouse[2] = false; $("tAim").classList.remove("on");
+      ({ shop: openShop, info: openInfo, cam: toggleCamera, pause: pauseGame })[b.dataset.act]();
+    }));
+    // tap a gun or gadget slot to use it
+    const gadgetFn = { tnt: () => throwTNT(), freeze: () => throwFreeze(), mine: () => placeMine(), fortress: () => deployFortress(), turret: () => deployTurret(), shield: () => raiseShield() };
+    $("bottom").addEventListener("pointerdown", (e) => {
+      const slot = e.target.closest(".slot");
+      if (!slot || G.mode !== "playing") return;
+      e.preventDefault();
+      if (slot.dataset.gun) trySwitch(+slot.dataset.gun);
+      else if (gadgetFn[slot.dataset.gadget]) gadgetFn[slot.dataset.gadget]();
+    });
+    // portrait: ask to rotate (and pause)
+    const checkRotate = () => {
+      const portrait = window.innerHeight > window.innerWidth;
+      show("rotateNote", portrait && (G.mode === "playing" || G.mode === "paused"));
+      if (portrait && G.mode === "playing") pauseGame();
+    };
+    window.addEventListener("resize", checkRotate);
+    window.addEventListener("orientationchange", checkRotate);
+    G.checkRotate = checkRotate;
+    // full screen where the browser allows it (Android); iPhone: add to home screen
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+      show("fullBtn", true);
+      $("fullBtn").addEventListener("click", () => {
+        const p = el.requestFullscreen();
+        if (p && p.then) p.then(() => { try { screen.orientation.lock("landscape").catch(() => {}); } catch (err) { /* ignore */ } }).catch(() => {});
+      });
+    } else if (/iPhone|iPod/.test(navigator.userAgent)) {
+      $("iosTip").textContent = "Tip: Share > Add to Home Screen plays it full screen.";
     }
   }
 

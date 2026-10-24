@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Block War 3D">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Block War 3D</title>
 <meta name="description" content="Block War 3D: a blocky first-person zombie shooter you play in the browser. Survive the horde, earn money, buy guns, beat the bosses.">
 <meta name="theme-color" content="#16202e">
@@ -222,6 +227,64 @@
   .statsGrid b { display: block; font-size: 26px; }
   .statsGrid span { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
 
+  /* ---------- touch (phones / tablets) ---------- */
+  body:not(.touch) .touchOnly { display: none !important; }
+  body.touch .kbOnly { display: none !important; }
+  body.touch, body.touch canvas#view { touch-action: none; overscroll-behavior: none; -webkit-touch-callout: none; }
+  #hud { z-index: 2; }
+  #touchUI { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+  .screen { z-index: 5; }
+  #stickZone, #lookZone { position: absolute; top: 0; bottom: 0; pointer-events: auto; touch-action: none; }
+  #stickZone { left: 0; width: 42%; }
+  #lookZone { right: 0; width: 58%; }
+  #stickBase { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; border: 2px solid rgba(211,255,102,.5); background: rgba(0,0,0,.28); display: none; pointer-events: none; }
+  #stickKnob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(211,255,102,.6); }
+  #stickBase.sprint { border-color: #5cc8ff; }
+  #stickBase.sprint #stickKnob { background: rgba(92,200,255,.75); }
+  #stickHint { position: absolute; left: calc(28px + env(safe-area-inset-left)); bottom: 40%; color: rgba(238,242,230,.45); font-size: 13px; font-weight: 700; pointer-events: none; }
+  .tbtn { position: absolute; pointer-events: auto; touch-action: none; border: 2px solid rgba(255,255,255,.35); background: rgba(12,15,19,.55); color: #eef2e6; font: 800 14px/1 system-ui, sans-serif; letter-spacing: .06em; border-radius: 10px; -webkit-user-select: none; user-select: none; }
+  #tFire { right: calc(22px + env(safe-area-inset-right)); bottom: 92px; width: 98px; height: 98px; border-radius: 50%; background: rgba(179,20,14,.55); border-color: rgba(255,120,100,.75); font-size: 18px; }
+  #tFire.on { background: rgba(230,40,30,.85); }
+  #tAim { right: calc(132px + env(safe-area-inset-right)); bottom: 116px; width: 66px; height: 66px; border-radius: 50%; }
+  #tAim.on { border-color: var(--lime); color: var(--lime); }
+  #tTop { position: absolute; right: calc(16px + env(safe-area-inset-right)); top: 214px; display: flex; gap: 6px; pointer-events: auto; }
+  #tTop .tbtn { position: static; padding: 9px 11px; font-size: 12px; }
+  body.touch .slot { pointer-events: auto; cursor: pointer; }
+  body.touch #stats { left: calc(12px + env(safe-area-inset-left)); top: 10px; }
+  body.touch #radarWrap { right: calc(12px + env(safe-area-inset-right)); top: 10px; }
+  body.touch #extras { left: calc(12px + env(safe-area-inset-left)); }
+  .controls.touchOnly { padding: 0 8px; }
+  body.touch .item .ikey { display: none; }
+  .shopFoot { position: sticky; bottom: -22px; margin-bottom: -22px; padding: 10px 0 22px; background: var(--panel-solid); }
+  @media (max-height: 520px) { .shopFoot { bottom: -14px; margin-bottom: -14px; padding-bottom: 14px; } .shopFoot .muted { display: none; } }
+  .controls.touchOnly div { display: block; text-align: center; }
+  #rotateNote { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; text-align: center; padding: 24px; background: rgba(5,7,9,.92); color: var(--lime); font-weight: 800; font-size: 20px; }
+  @media (max-height: 520px) {
+    .stat { min-width: 132px; padding: 3px 8px; gap: 6px; }
+    .stat .label { width: 46px; font-size: 9.5px; }
+    .stat .val { font-size: 15px; }
+    #stats { gap: 4px; }
+    #radar { width: 132px; height: 99px; }
+    #radarWrap .cap { font-size: 9px; margin-top: 2px; }
+    #tTop { top: 136px; }
+    .slot { padding: 3px 4px 3px; }
+    .slot .n { margin-top: 11px; font-size: 10.5px; }
+    .slot .s { font-size: 9.5px; }
+    #bottom { bottom: 8px; }
+    #extras { bottom: 64px; }
+    h1.title { font-size: clamp(40px, 9vw, 96px); }
+    .btn.big { margin-top: 18px; padding: 16px 34px; font-size: 22px; }
+    .controls { margin-top: 14px; }
+    .card { padding: 14px 16px; }
+    h2 { font-size: 26px; }
+    .item { grid-template-columns: 76px 1fr; padding: 8px; }
+    .item .thumb { width: 76px; height: 57px; }
+    .item .price { font-size: 18px; }
+    .item .iname { font-size: 13px; }
+    .item .idesc { font-size: 11px; }
+    #tFire { width: 84px; height: 84px; bottom: 70px; }
+    #tAim { width: 58px; height: 58px; bottom: 90px; right: calc(116px + env(safe-area-inset-right)); }
+  }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #07090c; color: var(--dim); font-size: 14px; }
 
   @media (max-width: 760px) {
@@ -256,11 +319,21 @@
     <div class="pill hidden" id="minionPill">Minion <span class="mbar"><i id="minionBar"></i></span><span id="minionTxt" class="muted"></span></div>
     <div class="pill hidden" id="regenPill"></div>
   </div>
-  <div id="hint"><span><kbd>B</kbd> shop</span><span><kbd>I</kbd> info</span><span><kbd>V</kbd> camera</span><span><kbd>Esc</kbd> pause</span></div>
+  <div id="hint" class="kbOnly"><span><kbd>B</kbd> shop</span><span><kbd>I</kbd> info</span><span><kbd>V</kbd> camera</span><span><kbd>Esc</kbd> pause</span></div>
   <div id="toast"></div>
   <div id="clickPrompt" class="hidden">Click to aim</div>
   <div id="banner"><div class="big" id="bannerBig"></div><div class="sub" id="bannerSub"></div></div>
 </div>
+<div id="touchUI" class="hidden">
+  <div id="stickZone"></div>
+  <div id="lookZone"></div>
+  <div id="stickBase"><div id="stickKnob"></div></div>
+  <div id="stickHint">move</div>
+  <button class="tbtn" id="tAim">AIM</button>
+  <button class="tbtn" id="tFire">FIRE</button>
+  <div id="tTop"><button class="tbtn" data-act="shop">SHOP</button><button class="tbtn" data-act="info">INFO</button><button class="tbtn" data-act="cam">CAM</button><button class="tbtn" data-act="pause">II</button></div>
+</div>
+<div id="rotateNote" class="hidden">Turn your phone sideways to play</div>
 <div id="vignette"></div><div id="healfx"></div><div id="frost"></div><div id="goofx"></div><div id="scope" class="hidden"></div>
 <div id="popups"></div>
 
@@ -269,7 +342,7 @@
   <h1 class="title">BLOCK WAR 3D</h1>
   <div class="tag">Zombie edition</div>
   <button class="btn big" id="startBtn">START BATTLE</button>
-  <div class="controls">
+  <div class="controls kbOnly">
     <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp;<kbd>Shift</kbd> sprint</div>
     <div><kbd>Mouse</kbd> aim</div>
     <div><kbd>Click</kbd> / <kbd>Space</kbd> fire</div>
@@ -278,17 +351,24 @@
     <div><kbd>B</kbd> shop &nbsp;<kbd>I</kbd> info</div>
   </div>
   <div class="best" id="bestLine"></div>
-  <div class="best hidden" id="touchNote">Block War 3D needs a keyboard and mouse. Try it on a computer.</div>
+  <div class="controls touchOnly" style="grid-template-columns: auto">
+    <div>Left thumb: move. Push all the way to sprint.</div>
+    <div>Right thumb: look. Hold FIRE to shoot (drag on it to aim).</div>
+    <div>Tap a gun or gadget at the bottom to use it.</div>
+  </div>
+  <div class="row touchOnly" style="justify-content:center; margin-top:14px"><button class="btn ghost hidden" id="fullBtn">Full screen</button></div>
+  <div class="best touchOnly" id="iosTip"></div>
 </div>
 
 <!-- Pause -->
 <div id="pause" class="screen dim hidden">
   <div class="card" style="max-width:520px">
     <h2>Paused</h2>
-    <div class="muted">Click Resume to grab the mouse again.</div>
+    <div class="muted kbOnly">Click Resume to grab the mouse again.</div>
     <div class="setting"><span>Mouse sensitivity</span><input type="range" id="sens" min="0.2" max="3" step="0.05"><span class="num" id="sensV"></span></div>
     <div class="setting"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05"><span class="num" id="volV"></span></div>
     <div class="setting"><span>Camera</span><span><button class="btn ghost" id="camBtn"></button></span><span></span></div>
+    <div class="setting"><span>Shadows</span><span><button class="btn ghost" id="shadowBtn"></button></span><span></span></div>
     <div class="row" style="margin-top:18px">
       <button class="btn" id="resumeBtn">Resume</button>
       <button class="btn ghost" id="infoBtn">Info center</button>
@@ -329,6 +409,7 @@
         <h3>Controls</h3>
         <table>
           <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td></tr>
+          <tr class="touchOnly"><td>Phone</td><td>Left thumb moves (push all the way to sprint), right thumb looks, FIRE and AIM buttons, tap a gun or gadget slot to use it</td></tr>
           <tr><td><kbd>Shift</kbd></td><td>Sprint. Uses mana (about 4 s from full); it refills when you stop running</td></tr>
           <tr><td>Mouse</td><td>Aim. Right-click to aim down sights (sniper scope)</td></tr>
           <tr><td>Click / <kbd>Space</kbd></td><td>Fire (hold for auto)</td></tr>
@@ -1730,6 +1811,17 @@
   const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
   const tmpV = V3(), tmpV2 = V3(), tmpV3 = V3();
 
+  // Phones / tablets get touch controls. ?mobile=1 or ?desktop=1 forces a mode.
+  const TOUCH = (() => {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.has("mobile")) return true;
+      if (q.has("desktop")) return false;
+      return matchMedia("(pointer: coarse)").matches && !matchMedia("(pointer: fine)").matches;
+    } catch (e) { return false; }
+  })();
+  if (TOUCH) document.body.classList.add("touch");
+
   // ---------------------------------------------------------------- config
   // The Scratch stage was 480x360. 3D: the arena keeps the 4:3 shape at 0.1 m per pixel.
   const ARENA_W = 48, ARENA_D = 36, HX = ARENA_W / 2, HZ = ARENA_D / 2;
@@ -1814,7 +1906,7 @@
     { id: "mg", page: 1, price: 400, name: "Machine gun", desc: "Faster fire rate", key: "2" },
     { id: "shield", page: 1, price: 1000, name: "SHIELD", desc: "5 s energy shield: blocks boss shots, shreds zombies", key: "9" },
     { id: "turret", page: 1, price: 1500, name: "Turret", desc: "Spinning sentry, 500 shots", key: "8" },
-    { id: "sniper", page: 1, price: 1000, name: "Sniper", desc: "15 damage a shot, right-click to scope", key: "4" },
+    { id: "sniper", page: 1, price: 1000, name: "Sniper", desc: TOUCH ? "15 damage a shot, AIM to scope" : "15 damage a shot, right-click to scope", key: "4" },
     { id: "fortress", page: 1, price: 3000, name: "Port a fortress", desc: "Barricade that holds for 100 s", key: "7" },
     { id: "snow", page: 2, price: 100, name: "Snow gun", desc: "Shoots snow balls", key: "5" },
     { id: "bounty", page: 2, price: 150, name: "Bounty hunt", desc: "Kill the target to get money", repeat: true },
@@ -1831,8 +1923,9 @@
     { id: "lucky", page: 3, price: 400, name: "Lucky block", desc: "Could be anything!!", repeat: true },
   ];
 
+
   // ---------------------------------------------------------------- settings
-  const settings = { sens: 1, vol: 0.8, third: false };
+  const settings = { sens: 1, vol: 0.8, third: false, shadows: !TOUCH };
   try { Object.assign(settings, JSON.parse(localStorage.getItem("bw3d.settings") || "{}")); } catch (e) { /* private mode */ }
   const saveSettings = () => { try { localStorage.setItem("bw3d.settings", JSON.stringify(settings)); } catch (e) { /* ignore */ } };
   let best = { time: 0, money: 0 };
@@ -1840,8 +1933,8 @@
 
   // ---------------------------------------------------------------- renderer / scenes
   const canvas = $("view");
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !TOUCH, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, TOUCH ? 1.5 : 2)); // phones: fewer pixels
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.autoClear = false;
@@ -1857,6 +1950,10 @@
   const env = Models.environment(ARENA_W, ARENA_D);
   scene.add(env.group);
   (env.lights || []).forEach((l) => { scene.add(l); if (l.target) scene.add(l.target); });
+  const moonLight = (env.lights || []).find((l) => l.isDirectionalLight && l.castShadow);
+  if (moonLight && TOUCH) moonLight.shadow.mapSize.set(1024, 1024);
+  function applyShadows() { if (moonLight) moonLight.castShadow = !!settings.shadows; }
+  applyShadows();
 
   // First-person gun lives in its own scene so it never clips into walls.
   const vmScene = new THREE.Scene();
@@ -2046,6 +2143,20 @@
     for (const b of bosses) if (b.hittable) t = rayCyl(o, d, b.x, b.z, b.r, b.mesh.position.y, b.h, t);
     if (bounty && bounty.visible) t = rayCyl(o, d, bounty.x, bounty.z, bounty.r, 0, bounty.h, t);
     for (const g of golds) t = rayCyl(o, d, g.x, g.z, g.r, 0, g.r * 1.2, t);
+    // touch screens: a little aim assist toward the zombie nearest the crosshair
+    if (TOUCH) {
+      let bestAng = 0.07, pick = null;
+      const consider = (x, y, z, maxD) => {
+        tmpV2.set(x - o.x, y - o.y, z - o.z);
+        const dist = tmpV2.length();
+        if (dist > maxD || dist < 0.5) return;
+        const ang = Math.acos(clamp(tmpV2.dot(d) / dist, -1, 1));
+        if (ang < bestAng && dist < t + 2 && !wallBetween(o.x, o.y, o.z, x, y, z)) { bestAng = ang; pick = [x, y, z]; }
+      };
+      for (const e of zombies) if (!e.dying && e.emerge >= 1) consider(e.x, e.mesh.position.y + e.h * 0.6, e.z, 40);
+      for (const b of bosses) if (b.hittable) consider(b.x, b.mesh.position.y + b.h * 0.5, b.z, 60);
+      if (pick) return out.set(pick[0], pick[1], pick[2]);
+    }
     return out.copy(o).addScaledVector(d, t);
   }
 
@@ -2200,7 +2311,7 @@
   let locked = false, ignoreUnlockUntil = 0, testMode = false;
   function lockFailed() { if (G.mode === "playing" && !locked && !testMode) pauseGame(); }
   function lockPointer() {
-    if (testMode) return;
+    if (testMode || TOUCH) return;
     try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(lockFailed); } catch (e) { lockFailed(); }
   }
   document.addEventListener("pointerlockerror", lockFailed);
@@ -2522,7 +2633,7 @@
   }
   // 3D: zombies rise out of the ground at least 8 m away instead of popping in on top of you.
   function spawnFromHorde() {
-    if (zombies.length >= 90) return;
+    if (zombies.length >= (TOUCH ? 70 : 90)) return;
     const s = randomSpot(8);
     spawnZombie(pickSpawnType(), s.x, s.z);
   }
@@ -3444,10 +3555,12 @@
     if (keys.KeyS || keys.ArrowDown) mz -= 1;
     if (keys.KeyD || keys.ArrowRight) mx += 1;
     if (keys.KeyA || keys.ArrowLeft) mx -= 1;
+    if (TOUCH && stick.mag > 0.12) { mx += stick.mx; mz += stick.mz; }
     const f = fwd(tmpV), len = Math.hypot(mx, mz) || 1;
+    const analog = Math.min(1, Math.hypot(mx, mz)); // keyboard = 1, a half-pushed stick walks slower
     const rx = -f.z, rz = f.x; // right vector
-    // sprint: Shift while moving (not while aiming down sights)
-    const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && (mx || mz) && !mouse[2];
+    // sprint: Shift while moving, or the stick pushed all the way (not while aiming down sights)
+    const wantSprint = (keys.ShiftLeft || keys.ShiftRight || (TOUCH && stick.mag > 0.92)) && (mx || mz) && !mouse[2];
     if (wantSprint && !G.exhausted && G.mana > 0) {
       G.sprinting = true;
       G.mana = Math.max(0, G.mana - MANA.drain * dt);
@@ -3461,7 +3574,7 @@
     }
     G.sprintK = lerp(G.sprintK, G.sprinting ? 1 : 0, 1 - Math.pow(0.001, dt));
     const speed = 7 * (G.sprinting ? MANA.speed : 1);
-    let vx = ((f.x * mz + rx * mx) / len) * speed, vz = ((f.z * mz + rz * mx) / len) * speed;
+    let vx = ((f.x * mz + rx * mx) / len) * speed * analog, vz = ((f.z * mz + rz * mx) / len) * speed * analog;
     if (G.ads > 0.5) { vx *= 0.6; vz *= 0.6; }
     if (G.slowT > 0) { G.slowT -= dt; vx *= 0.55; vz *= 0.55; } // spitter goo
     const stepX = (vx + P.knock.x) * dt, stepZ = (vz + P.knock.z) * dt;
@@ -3492,7 +3605,7 @@
     if (G.armored && G.hp < 50) { G.regenArmor += dt; if (G.regenArmor >= 5) { G.regenArmor = 0; healPlayer(1, null); } }
     // win at 1000 money
     // ADS / scope
-    const wantAds = mouse[2] && locked && !G.sprinting;
+    const wantAds = mouse[2] && (locked || TOUCH) && !G.sprinting;
     G.ads = lerp(G.ads, wantAds ? 1 : 0, 1 - Math.pow(0.0001, dt));
   }
 
@@ -3711,7 +3824,9 @@
     }
     const zc = zombies.filter((e) => !e.dying).length;
     if (zc !== hud.zc) { hud.zc = zc; $("zcount").textContent = zc + " zombies"; }
-    const needClick = G.mode === "playing" && !locked;
+    const needClick = G.mode === "playing" && !locked && !TOUCH;
+    const touchOn = TOUCH && G.mode === "playing";
+    if (touchOn !== hud.touchOn) { hud.touchOn = touchOn; show("touchUI", touchOn); if (!touchOn) resetTouch(); }
     if (needClick !== hud.click) { hud.click = needClick; show("clickPrompt", needClick); }
     drawRadar();
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("toast").classList.remove("on"); }
@@ -3925,7 +4040,9 @@
     $("sens").value = settings.sens; $("sensV").textContent = (+settings.sens).toFixed(2);
     $("vol").value = settings.vol; $("volV").textContent = Math.round(settings.vol * 100);
     $("camBtn").textContent = settings.third ? "Third person" : "First person";
+    $("shadowBtn").textContent = settings.shadows ? "On" : "Off (faster)";
   }
+  $("shadowBtn").addEventListener("click", () => { settings.shadows = !settings.shadows; applyShadows(); saveSettings(); syncSettingsUI(); });
   $("sens").addEventListener("input", (e) => { settings.sens = +e.target.value; saveSettings(); syncSettingsUI(); });
   $("vol").addEventListener("input", (e) => { settings.vol = +e.target.value; SFX.setMaster(settings.vol); saveSettings(); syncSettingsUI(); });
   $("camBtn").addEventListener("click", () => { toggleCamera(); syncSettingsUI(); });
@@ -4008,13 +4125,15 @@
     G.mode = "playing";
     startWave(); // 14 + 4 = 18 health, like the original after the green flag
     roundReset(null);
-    banner("BLOCK WAR", "Survive. Kills are money. B opens the shop.", 3.2);
+    banner("BLOCK WAR", TOUCH ? "Survive. Kills are money. SHOP is top right." : "Survive. Kills are money. B opens the shop.", 3.2);
+    if (G.checkRotate) G.checkRotate();
     lockPointer();
   }
   function toTitle() {
     wipeWorld();
     unlockPointer();
     G.mode = "title";
+    show("rotateNote", false);
     show("hud", false);
     show("title", true);
     SFX.heartbeat(false); hud.heart = false;
@@ -4025,8 +4144,7 @@
     if (playerMesh) playerMesh.visible = false;
   }
   $("startBtn").addEventListener("click", startGame);
-  // phones and tablets can't play it (no keyboard / mouse lock)
-  try { if (window.matchMedia("(pointer: coarse)").matches && !window.matchMedia("(pointer: fine)").matches) show("touchNote", true); } catch (e) { /* ignore */ }
+  setupTouch();
 
   // ---------------------------------------------------------------- main loop
   let last = performance.now(), titleT = 0;
@@ -4085,6 +4203,122 @@
     if (G.mode !== "title" && !settings.third && !scoped && G.mode !== "dead") {
       renderer.clearDepth();
       renderer.render(vmScene, camera);
+    }
+  }
+
+  // ---------------------------------------------------------------- touch controls
+  const stick = { id: null, ox: 0, oy: 0, mx: 0, mz: 0, mag: 0 };
+  const look = { id: null, x: 0, y: 0 };
+  const fireTouch = { id: null, x: 0, y: 0 };
+  const STICK_R = 58;
+  function resetTouch() {
+    stick.id = look.id = fireTouch.id = null;
+    stick.mx = stick.mz = stick.mag = 0;
+    $("stickBase").style.display = "none";
+    $("tFire").classList.remove("on");
+    $("tAim").classList.remove("on");
+    mouse[0] = false;
+  }
+  function lookBy(dx, dy) {
+    const k = 0.0062 * settings.sens * (camera.fov / 75);
+    P.yaw -= dx * k;
+    P.pitch = clamp(P.pitch - dy * k, -1.45, 1.45);
+  }
+  function setupTouch() {
+    if (!TOUCH) return;
+    const zone = $("stickZone"), lz = $("lookZone"), base = $("stickBase"), knob = $("stickKnob");
+    const noMenu = (e) => e.preventDefault();
+    document.addEventListener("contextmenu", noMenu);
+    // left thumb: a joystick that appears where you touch
+    zone.addEventListener("pointerdown", (e) => {
+      if (stick.id !== null) return;
+      e.preventDefault();
+      stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY;
+      base.style.display = "block"; base.style.left = e.clientX + "px"; base.style.top = e.clientY + "px";
+      knob.style.transform = "translate(0,0)";
+      $("stickHint").style.display = "none";
+      try { zone.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    zone.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== stick.id) return;
+      let dx = e.clientX - stick.ox, dy = e.clientY - stick.oy;
+      const d = Math.hypot(dx, dy);
+      if (d > STICK_R) { dx *= STICK_R / d; dy *= STICK_R / d; }
+      knob.style.transform = `translate(${dx}px, ${dy}px)`;
+      stick.mx = dx / STICK_R; stick.mz = -dy / STICK_R; stick.mag = Math.min(1, d / STICK_R);
+      base.classList.toggle("sprint", stick.mag > 0.92);
+    });
+    const endStick = (e) => { if (e.pointerId !== stick.id) return; stick.id = null; stick.mx = stick.mz = stick.mag = 0; base.style.display = "none"; base.classList.remove("sprint"); };
+    zone.addEventListener("pointerup", endStick);
+    zone.addEventListener("pointercancel", endStick);
+    // right thumb: drag to look
+    lz.addEventListener("pointerdown", (e) => {
+      if (look.id !== null) return;
+      e.preventDefault();
+      look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
+      try { lz.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    lz.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== look.id || G.mode !== "playing") return;
+      lookBy(e.clientX - look.x, e.clientY - look.y);
+      look.x = e.clientX; look.y = e.clientY;
+    });
+    const endLook = (e) => { if (e.pointerId === look.id) look.id = null; };
+    lz.addEventListener("pointerup", endLook);
+    lz.addEventListener("pointercancel", endLook);
+    // FIRE: hold to shoot; dragging on it aims too
+    const fire = $("tFire");
+    fire.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      fireTouch.id = e.pointerId; fireTouch.x = e.clientX; fireTouch.y = e.clientY;
+      mouse[0] = true; fire.classList.add("on");
+      try { fire.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    fire.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== fireTouch.id || G.mode !== "playing") return;
+      lookBy(e.clientX - fireTouch.x, e.clientY - fireTouch.y);
+      fireTouch.x = e.clientX; fireTouch.y = e.clientY;
+    });
+    const endFire = (e) => { if (e.pointerId !== fireTouch.id) return; fireTouch.id = null; mouse[0] = false; fire.classList.remove("on"); };
+    fire.addEventListener("pointerup", endFire);
+    fire.addEventListener("pointercancel", endFire);
+    // AIM toggles aim-down-sights / the sniper scope
+    $("tAim").addEventListener("pointerdown", (e) => { e.preventDefault(); mouse[2] = !mouse[2]; $("tAim").classList.toggle("on", mouse[2]); });
+    // SHOP / INFO / CAM / pause
+    document.querySelectorAll("#tTop .tbtn").forEach((b) => b.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      if (G.mode !== "playing") return;
+      mouse[2] = false; $("tAim").classList.remove("on");
+      ({ shop: openShop, info: openInfo, cam: toggleCamera, pause: pauseGame })[b.dataset.act]();
+    }));
+    // tap a gun or gadget slot to use it
+    const gadgetFn = { tnt: () => throwTNT(), freeze: () => throwFreeze(), mine: () => placeMine(), fortress: () => deployFortress(), turret: () => deployTurret(), shield: () => raiseShield() };
+    $("bottom").addEventListener("pointerdown", (e) => {
+      const slot = e.target.closest(".slot");
+      if (!slot || G.mode !== "playing") return;
+      e.preventDefault();
+      if (slot.dataset.gun) trySwitch(+slot.dataset.gun);
+      else if (gadgetFn[slot.dataset.gadget]) gadgetFn[slot.dataset.gadget]();
+    });
+    // portrait: ask to rotate (and pause)
+    const checkRotate = () => {
+      const portrait = window.innerHeight > window.innerWidth;
+      show("rotateNote", portrait && (G.mode === "playing" || G.mode === "paused"));
+      if (portrait && G.mode === "playing") pauseGame();
+    };
+    window.addEventListener("resize", checkRotate);
+    window.addEventListener("orientationchange", checkRotate);
+    G.checkRotate = checkRotate;
+    // full screen where the browser allows it (Android); iPhone: add to home screen
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+      show("fullBtn", true);
+      $("fullBtn").addEventListener("click", () => {
+        const p = el.requestFullscreen();
+        if (p && p.then) p.then(() => { try { screen.orientation.lock("landscape").catch(() => {}); } catch (err) { /* ignore */ } }).catch(() => {});
+      });
+    } else if (/iPhone|iPod/.test(navigator.userAgent)) {
+      $("iosTip").textContent = "Tip: Share > Add to Home Screen plays it full screen.";
     }
   }
 

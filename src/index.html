@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Block War 3D">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Block War 3D</title>
 <meta name="description" content="Block War 3D: a blocky first-person zombie shooter you play in the browser. Survive the horde, earn money, buy guns, beat the bosses.">
 <meta name="theme-color" content="#16202e">
@@ -222,6 +227,64 @@
   .statsGrid b { display: block; font-size: 26px; }
   .statsGrid span { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
 
+  /* ---------- touch (phones / tablets) ---------- */
+  body:not(.touch) .touchOnly { display: none !important; }
+  body.touch .kbOnly { display: none !important; }
+  body.touch, body.touch canvas#view { touch-action: none; overscroll-behavior: none; -webkit-touch-callout: none; }
+  #hud { z-index: 2; }
+  #touchUI { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+  .screen { z-index: 5; }
+  #stickZone, #lookZone { position: absolute; top: 0; bottom: 0; pointer-events: auto; touch-action: none; }
+  #stickZone { left: 0; width: 42%; }
+  #lookZone { right: 0; width: 58%; }
+  #stickBase { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; border: 2px solid rgba(211,255,102,.5); background: rgba(0,0,0,.28); display: none; pointer-events: none; }
+  #stickKnob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(211,255,102,.6); }
+  #stickBase.sprint { border-color: #5cc8ff; }
+  #stickBase.sprint #stickKnob { background: rgba(92,200,255,.75); }
+  #stickHint { position: absolute; left: calc(28px + env(safe-area-inset-left)); bottom: 40%; color: rgba(238,242,230,.45); font-size: 13px; font-weight: 700; pointer-events: none; }
+  .tbtn { position: absolute; pointer-events: auto; touch-action: none; border: 2px solid rgba(255,255,255,.35); background: rgba(12,15,19,.55); color: #eef2e6; font: 800 14px/1 system-ui, sans-serif; letter-spacing: .06em; border-radius: 10px; -webkit-user-select: none; user-select: none; }
+  #tFire { right: calc(22px + env(safe-area-inset-right)); bottom: 92px; width: 98px; height: 98px; border-radius: 50%; background: rgba(179,20,14,.55); border-color: rgba(255,120,100,.75); font-size: 18px; }
+  #tFire.on { background: rgba(230,40,30,.85); }
+  #tAim { right: calc(132px + env(safe-area-inset-right)); bottom: 116px; width: 66px; height: 66px; border-radius: 50%; }
+  #tAim.on { border-color: var(--lime); color: var(--lime); }
+  #tTop { position: absolute; right: calc(16px + env(safe-area-inset-right)); top: 214px; display: flex; gap: 6px; pointer-events: auto; }
+  #tTop .tbtn { position: static; padding: 9px 11px; font-size: 12px; }
+  body.touch .slot { pointer-events: auto; cursor: pointer; }
+  body.touch #stats { left: calc(12px + env(safe-area-inset-left)); top: 10px; }
+  body.touch #radarWrap { right: calc(12px + env(safe-area-inset-right)); top: 10px; }
+  body.touch #extras { left: calc(12px + env(safe-area-inset-left)); }
+  .controls.touchOnly { padding: 0 8px; }
+  body.touch .item .ikey { display: none; }
+  .shopFoot { position: sticky; bottom: -22px; margin-bottom: -22px; padding: 10px 0 22px; background: var(--panel-solid); }
+  @media (max-height: 520px) { .shopFoot { bottom: -14px; margin-bottom: -14px; padding-bottom: 14px; } .shopFoot .muted { display: none; } }
+  .controls.touchOnly div { display: block; text-align: center; }
+  #rotateNote { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; text-align: center; padding: 24px; background: rgba(5,7,9,.92); color: var(--lime); font-weight: 800; font-size: 20px; }
+  @media (max-height: 520px) {
+    .stat { min-width: 132px; padding: 3px 8px; gap: 6px; }
+    .stat .label { width: 46px; font-size: 9.5px; }
+    .stat .val { font-size: 15px; }
+    #stats { gap: 4px; }
+    #radar { width: 132px; height: 99px; }
+    #radarWrap .cap { font-size: 9px; margin-top: 2px; }
+    #tTop { top: 136px; }
+    .slot { padding: 3px 4px 3px; }
+    .slot .n { margin-top: 11px; font-size: 10.5px; }
+    .slot .s { font-size: 9.5px; }
+    #bottom { bottom: 8px; }
+    #extras { bottom: 64px; }
+    h1.title { font-size: clamp(40px, 9vw, 96px); }
+    .btn.big { margin-top: 18px; padding: 16px 34px; font-size: 22px; }
+    .controls { margin-top: 14px; }
+    .card { padding: 14px 16px; }
+    h2 { font-size: 26px; }
+    .item { grid-template-columns: 76px 1fr; padding: 8px; }
+    .item .thumb { width: 76px; height: 57px; }
+    .item .price { font-size: 18px; }
+    .item .iname { font-size: 13px; }
+    .item .idesc { font-size: 11px; }
+    #tFire { width: 84px; height: 84px; bottom: 70px; }
+    #tAim { width: 58px; height: 58px; bottom: 90px; right: calc(116px + env(safe-area-inset-right)); }
+  }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #07090c; color: var(--dim); font-size: 14px; }
 
   @media (max-width: 760px) {
@@ -256,11 +319,21 @@
     <div class="pill hidden" id="minionPill">Minion <span class="mbar"><i id="minionBar"></i></span><span id="minionTxt" class="muted"></span></div>
     <div class="pill hidden" id="regenPill"></div>
   </div>
-  <div id="hint"><span><kbd>B</kbd> shop</span><span><kbd>I</kbd> info</span><span><kbd>V</kbd> camera</span><span><kbd>Esc</kbd> pause</span></div>
+  <div id="hint" class="kbOnly"><span><kbd>B</kbd> shop</span><span><kbd>I</kbd> info</span><span><kbd>V</kbd> camera</span><span><kbd>Esc</kbd> pause</span></div>
   <div id="toast"></div>
   <div id="clickPrompt" class="hidden">Click to aim</div>
   <div id="banner"><div class="big" id="bannerBig"></div><div class="sub" id="bannerSub"></div></div>
 </div>
+<div id="touchUI" class="hidden">
+  <div id="stickZone"></div>
+  <div id="lookZone"></div>
+  <div id="stickBase"><div id="stickKnob"></div></div>
+  <div id="stickHint">move</div>
+  <button class="tbtn" id="tAim">AIM</button>
+  <button class="tbtn" id="tFire">FIRE</button>
+  <div id="tTop"><button class="tbtn" data-act="shop">SHOP</button><button class="tbtn" data-act="info">INFO</button><button class="tbtn" data-act="cam">CAM</button><button class="tbtn" data-act="pause">II</button></div>
+</div>
+<div id="rotateNote" class="hidden">Turn your phone sideways to play</div>
 <div id="vignette"></div><div id="healfx"></div><div id="frost"></div><div id="goofx"></div><div id="scope" class="hidden"></div>
 <div id="popups"></div>
 
@@ -269,7 +342,7 @@
   <h1 class="title">BLOCK WAR 3D</h1>
   <div class="tag">Zombie edition</div>
   <button class="btn big" id="startBtn">START BATTLE</button>
-  <div class="controls">
+  <div class="controls kbOnly">
     <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp;<kbd>Shift</kbd> sprint</div>
     <div><kbd>Mouse</kbd> aim</div>
     <div><kbd>Click</kbd> / <kbd>Space</kbd> fire</div>
@@ -278,17 +351,24 @@
     <div><kbd>B</kbd> shop &nbsp;<kbd>I</kbd> info</div>
   </div>
   <div class="best" id="bestLine"></div>
-  <div class="best hidden" id="touchNote">Block War 3D needs a keyboard and mouse. Try it on a computer.</div>
+  <div class="controls touchOnly" style="grid-template-columns: auto">
+    <div>Left thumb: move. Push all the way to sprint.</div>
+    <div>Right thumb: look. Hold FIRE to shoot (drag on it to aim).</div>
+    <div>Tap a gun or gadget at the bottom to use it.</div>
+  </div>
+  <div class="row touchOnly" style="justify-content:center; margin-top:14px"><button class="btn ghost hidden" id="fullBtn">Full screen</button></div>
+  <div class="best touchOnly" id="iosTip"></div>
 </div>
 
 <!-- Pause -->
 <div id="pause" class="screen dim hidden">
   <div class="card" style="max-width:520px">
     <h2>Paused</h2>
-    <div class="muted">Click Resume to grab the mouse again.</div>
+    <div class="muted kbOnly">Click Resume to grab the mouse again.</div>
     <div class="setting"><span>Mouse sensitivity</span><input type="range" id="sens" min="0.2" max="3" step="0.05"><span class="num" id="sensV"></span></div>
     <div class="setting"><span>Volume</span><input type="range" id="vol" min="0" max="1" step="0.05"><span class="num" id="volV"></span></div>
     <div class="setting"><span>Camera</span><span><button class="btn ghost" id="camBtn"></button></span><span></span></div>
+    <div class="setting"><span>Shadows</span><span><button class="btn ghost" id="shadowBtn"></button></span><span></span></div>
     <div class="row" style="margin-top:18px">
       <button class="btn" id="resumeBtn">Resume</button>
       <button class="btn ghost" id="infoBtn">Info center</button>
@@ -329,6 +409,7 @@
         <h3>Controls</h3>
         <table>
           <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td></tr>
+          <tr class="touchOnly"><td>Phone</td><td>Left thumb moves (push all the way to sprint), right thumb looks, FIRE and AIM buttons, tap a gun or gadget slot to use it</td></tr>
           <tr><td><kbd>Shift</kbd></td><td>Sprint. Uses mana (about 4 s from full); it refills when you stop running</td></tr>
           <tr><td>Mouse</td><td>Aim. Right-click to aim down sights (sniper scope)</td></tr>
           <tr><td>Click / <kbd>Space</kbd></td><td>Fire (hold for auto)</td></tr>

@@ -5,7 +5,15 @@ Same shop, prices, guns, bosses, timers and pickups. Now it's a night battlefiel
 blocks are zombies.
 
 ## Play
-**Online:** https://mr-pythoneer.github.io/block-war-3d/ (needs a keyboard and mouse)
+**Online:** https://mr-pythoneer.github.io/block-war-3d/ works on computers and on phones/tablets
+(hold the phone sideways).
+
+**On a phone:** a joystick appears under your left thumb (push it all the way to sprint), drag
+with your right thumb to look, hold FIRE to shoot (you can drag on it to aim), AIM for sights /
+scope, and tap a gun or gadget at the bottom to use it. SHOP / INFO / CAM / pause are top right.
+Touch screens get a small aim assist, no shadows by default (Pause > Shadows turns them on), a
+lower render resolution and at most 70 zombies at once. Add `?mobile=1` or `?desktop=1` to the
+URL to force a mode. On iPhone, Share > Add to Home Screen plays it full screen.
 
 **Offline:** run `python3 tools/build.py`, then double-click `dist/block_war_3d.html`. It's one
 self-contained file and needs no internet. (`docs/index.html` is the same page; GitHub Pages serves it.)
