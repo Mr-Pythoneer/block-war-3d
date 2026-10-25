@@ -58,7 +58,7 @@
     6: { name: "big helmet", hp: 17, speed: 1.5, reward: 6 },
     // new zombies, mixed into the horde the longer you survive
     7: { name: "Splitter", hp: 10, speed: 1.2, reward: 5, at: 20, intro: "Breaks into 3 minis when it dies" },
-    8: { name: "Boomer", hp: 6, speed: 2.2, reward: 3, at: 45, intro: "Blows up next to you. Shoot it near other zombies" },
+    8: { name: "Boomer", hp: 6, speed: 2.2, reward: 3, at: 45, intro: "Blows up next to you. Shoot it near other blocks" },
     9: { name: "Spitter", hp: 6, speed: 1.4, reward: 4, at: 90, intro: "Spits goo from far away. Goo slows you down" },
     10: { name: "Shield guy", hp: 10, speed: 1.5, reward: 6, at: 150, intro: "Blocks bullets from the front. Flank it or use TNT" },
   };
@@ -118,7 +118,7 @@
     { id: "tnt", page: 1, price: 500, name: "TNT", desc: "Explosive", key: "Q" },
     { id: "heal", page: 1, price: 15, name: "Heals", desc: "Heals 1 hp", repeat: true },
     { id: "mg", page: 1, price: 400, name: "Machine gun", desc: "Faster fire rate", key: "2" },
-    { id: "shield", page: 1, price: 1000, name: "SHIELD", desc: "5 s energy shield: blocks boss shots, shreds zombies", key: "9" },
+    { id: "shield", page: 1, price: 1000, name: "SHIELD", desc: "5 s energy shield: stops boss shots, shreds blocks", key: "9" },
     { id: "turret", page: 1, price: 1500, name: "Turret", desc: "Spinning sentry, 500 shots", key: "8" },
     { id: "sniper", page: 1, price: 1000, name: "Sniper", desc: TOUCH ? "15 damage a shot, AIM to scope" : "15 damage a shot, right-click to scope", key: "4" },
     { id: "fortress", page: 1, price: 3000, name: "Port a fortress", desc: "Barricade that holds for 100 s", key: "7" },
@@ -131,9 +131,9 @@
     { id: "armored", page: 2, price: 4000, name: "Armored", desc: "Armor plating, regenerate up to 50 HP" },
     // page 3: new stuff
     { id: "shotgun", page: 3, price: 700, name: "Shotgun", desc: "Shoots 7 bullets at once", key: "6" },
-    { id: "laser", page: 3, price: 1800, name: "Laser gun", desc: "Shoots the red laser. Goes through every zombie", key: "0" },
+    { id: "laser", page: 3, price: 1800, name: "Laser gun", desc: "Shoots the red laser. Goes through every block", key: "0" },
     { id: "mine", page: 3, price: 400, name: "Land mine", desc: "3 mines a round. Boom when they step on it", key: "F" },
-    { id: "freeze", page: 3, price: 800, name: "Freeze bomb", desc: "Freezes zombies for 4 s", key: "E" },
+    { id: "freeze", page: 3, price: 800, name: "Freeze bomb", desc: "Freezes blocks for 4 s", key: "E" },
     { id: "lucky", page: 3, price: 400, name: "Lucky block", desc: "Could be anything!!", repeat: true },
   ];
 
@@ -243,17 +243,49 @@
     for (const m of mesh.userData.mats || []) m.dispose();
   }
   function parts(mesh) { return mesh.userData.parts || {}; }
-  function animateWalk(mesh, phase, amount, armBase) {
-    const p = parts(mesh);
-    const s = Math.sin(phase) * amount;
-    if (p.legL) p.legL.rotation.x = s;
-    if (p.legR) p.legR.rotation.x = -s;
-    const ab = armBase !== undefined ? armBase : mesh.userData.armBase || 0;
-    if (p.armL) p.armL.rotation.x = ab - s * 0.35;
-    if (p.armR) p.armR.rotation.x = ab + s * 0.35;
-    if (p.body) p.body.position.y = Math.abs(Math.cos(phase)) * amount * 0.06;
-  }
   const faceYaw = (dx, dz) => Math.atan2(dx, dz); // models face +Z
+
+  // Cubes don't walk. They hop (minis), slide with a wobble (normal ones), or thud along in big
+  // heavy hops (big ones and bosses). `c` keeps the animation state: hop phase, squash, jelly.
+  const GAIT = {
+    hop: { stride: 1.0, height: 0.38, squash: 0.25 },
+    slide: { stride: 1.6, height: 0, squash: 0, wobble: 0.08 },
+    thud: { stride: 2.3, height: 0.24, squash: 0.4 },
+    float: { stride: 3, height: 0, squash: 0 },
+  };
+  const DROP_H = 9; // blocks fall in from this high
+  function animateBlock(c, moved, dt) {
+    const ud = c.mesh.userData, body = ud.parts && ud.parts.body;
+    if (!body) return false;
+    const g = GAIT[ud.gait] || GAIT.slide, edge = ud.edge || 1;
+    let y = 0, sy = 1, landed = false;
+    c.hop = c.hop || 0;
+    if (g.height > 0) {
+      const before = c.hop;
+      c.hop += moved / (g.stride * Math.max(0.7, Math.sqrt(edge)));
+      if (Math.floor(c.hop) > Math.floor(before)) { c.squash = g.squash; landed = true; }
+      const air = Math.sin((c.hop % 1) * Math.PI);
+      y = air * g.height * edge;
+      sy += air * 0.1; // stretch in the air
+    } else if (g.wobble) {
+      c.hop += moved / g.stride;
+      const w = Math.sin(c.hop * TAU) * g.wobble;
+      body.rotation.z = moved > 1e-4 ? w : body.rotation.z * Math.pow(0.02, dt); // settle when it stops
+      sy += Math.sin(c.hop * TAU * 2) * 0.03;
+    }
+    c.squash = Math.max(0, (c.squash || 0) - dt * 3.5);
+    c.jelly = Math.max(0, (c.jelly || 0) - dt * 3);
+    const jelly = c.jelly > 0 ? Math.sin(c.jelly * 28) * c.jelly * 0.25 : 0;
+    sy *= 1 - c.squash * 0.55 - jelly;
+    sy = Math.max(0.35, sy);
+    const sxz = 1 / Math.sqrt(sy); // squash keeps the volume, so it bulges out
+    body.position.y = (ud.lift || 0) + y;
+    body.scale.set(sxz, sy, sxz);
+    return landed;
+  }
+  // a dark spot on the ground where a block is about to land
+  const markGeo = new THREE.PlaneGeometry(1, 1);
+  const markMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false });
 
   // ---------------------------------------------------------------- collisions (XZ plane)
   // Oriented boxes: {x, z, hx, hz, ang, h}. ang = rotation.y of the box.
@@ -471,6 +503,7 @@
 
   // ---------------------------------------------------------------- player model + guns
   let playerMesh = null, helmetMesh = null;
+  const playerAnim = { mesh: null };
   function buildPlayer() {
     if (playerMesh) disposeMesh(playerMesh);
     playerMesh = Models.player({ armored: G.armored });
@@ -837,12 +870,16 @@
     const ud = mesh.userData;
     const e = { type, hp: ZTYPES[type].hp, speed: ZTYPES[type].speed * SPEED * rand(0.92, 1.08), mesh,
       r: ud.radius || 0.45, h: ud.height || 1.8, x, z, yaw: Math.random() * TAU,
-      emerge: 0, dying: 0, flash: 0, hazardT: 0, groanT: rand(1.5, 6), phase: Math.random() * 10, wander: null,
+      emerge: 0, dying: 0, flash: 0, hazardT: 0, wander: null, hop: Math.random(), squash: 0, jelly: 0,
       frozen: 0, fuse: 0, spitT: rand(2, 3.5), strafe: Math.random() < 0.5 ? 1 : -1 };
-    mesh.position.set(x, -e.h, z);
+    mesh.position.set(x, DROP_H, z);
     scene.add(mesh);
+    e.marker = new THREE.Mesh(markGeo, markMat);
+    e.marker.rotation.x = -Math.PI / 2;
+    e.marker.position.set(x, 0.03, z);
+    e.marker.scale.setScalar(e.r * 1.2);
+    scene.add(e.marker);
     zombies.push(e);
-    if (G.mode === "playing") SFX.play("zombie_spawn", { x, z, vol: 0.7 });
     return e;
   }
   // 3D: zombies rise out of the ground at least 8 m away instead of popping in on top of you.
@@ -857,16 +894,18 @@
     const open = NEW_TYPES.filter((n) => G.time >= ZTYPES[n].at);
     if (!open.length || Math.random() > Math.min(0.35, G.time / 500)) return t;
     const n = open[(Math.random() * open.length) | 0];
-    if (!G.seenZ[n]) { G.seenZ[n] = true; banner("NEW ZOMBIE: " + ZTYPES[n].name.toUpperCase(), ZTYPES[n].intro, 3.5); }
+    if (!G.seenZ[n]) { G.seenZ[n] = true; banner("NEW BLOCK: " + ZTYPES[n].name.toUpperCase(), ZTYPES[n].intro, 3.5); }
     return n;
   }
+  function shadeHex(hex, k) { _c.setHex(hex).multiplyScalar(k); return _c.getHex(); }
   function earn(n) { const v = n * G.moneyMult; G.money += v; return v; }
   function damageZombie(e, amount, how) {
     if (e.dying) return;
     e.hp -= amount;
     e.flash = 0.08;
+    e.jelly = 1;
     SFX.play("hit", { x: e.x, z: e.z, vol: 0.8 });
-    emit(e.x, e.mesh.position.y + e.h * 0.6, e.z, [0x2f4a10, ZCOLOR[e.type], ZCOLOR[e.type]], 3, 2.5, 0.08, 0.4);
+    emit(e.x, e.mesh.position.y + e.h * 0.6, e.z, [ZCOLOR[e.type], ZCOLOR[e.type], 0xffffff], 3, 2.5, 0.08, 0.4);
     if (e.hp < 1) {
       const pay = earn(killReward(e.type)); // laser, TNT and sniper kills used to pay only 1
       G.kills++;
@@ -877,17 +916,18 @@
   }
   function killZombie(e) {
     e.dying = 0.0001;
-    SFX.play("kill", { x: e.x, z: e.z });
-    const col = ZCOLOR[e.type] || 0x7bac00;
-    emit(e.x, e.h * 0.5, e.z, [col, col, 0x111111, 0x3a2a1a], 16, 4.5, 0.14 * (e.h / 1.8), 1.0);
+    SFX.play("block_pop", { x: e.x, z: e.z });
+    // it bursts into a pile of little cubes that bounce around
+    const col = ZCOLOR[e.type] || 0x7bac00, edge = e.mesh.userData.edge || 1;
+    emit(e.x, e.mesh.position.y + e.h * 0.5, e.z, [col, col, col, shadeHex(col, 0.75), 0x111111], 14, 5.5, edge * 0.24, 1.5);
     // Splitter breaks into three minis, Boomer goes off (queued: these can happen mid-loop)
     if (e.type === 7) {
       SFX.play("split", { x: e.x, z: e.z });
-      for (let i = 0; i < 3; i++) { const a = (i / 3) * TAU + Math.random(); pendingSpawns.push({ type: 1, x: e.x + Math.cos(a) * 0.9, z: e.z + Math.sin(a) * 0.9, emerge: 0.75 }); }
+      for (let i = 0; i < 3; i++) { const a = (i / 3) * TAU + Math.random(); pendingSpawns.push({ type: 1, x: e.x + Math.cos(a) * 0.9, z: e.z + Math.sin(a) * 0.9, emerge: 0.9 }); }
     }
     if (e.type === 8 && !e.exploded) { e.exploded = true; pendingBooms.push({ x: e.x, z: e.z, t: e.fuse > 0 ? 0 : 0.12 }); }
   }
-  function removeZombie(e) { disposeMesh(e.mesh); e.removed = true; }
+  function removeZombie(e) { disposeMesh(e.mesh); if (e.marker) scene.remove(e.marker); e.removed = true; }
   function clearZombies(sink) {
     for (const e of zombies) {
       if (sink && !e.dying) { e.dying = 0.0001; e.sinkOnly = true; } else removeZombie(e);
@@ -903,11 +943,13 @@
       if (e.removed) continue;
       const m = e.mesh;
       if (e.dying) {
-        if (e.dieY === undefined) e.dieY = Math.min(0, m.position.y);
-        e.dying += dt / (e.sinkOnly ? 0.8 : 0.75);
-        if (!e.sinkOnly) m.rotation.x = -Math.min(1, e.dying * 1.6) * Math.PI / 2;
-        m.position.y = e.dieY - Math.max(0, e.dying - (e.sinkOnly ? 0 : 0.45)) * e.h * 1.2;
-        if (e.dying > 0.55) setOpacity(m, clamp(1 - (e.dying - 0.55) / 0.45, 0, 1));
+        e.dying += dt / (e.sinkOnly ? 0.5 : 0.12);
+        const d = Math.min(1, e.dying), body = parts(m).body;
+        if (body) {
+          if (e.sinkOnly) body.scale.setScalar(Math.max(0.01, 1 - d)); // shrinks away
+          else { const k = 1 + d * 0.35; body.scale.set(k, Math.max(0.05, k * (1 - d * 0.6)), k); } // swells, then pops
+        }
+        if (e.marker) e.marker.visible = false;
         if (e.dying >= 1) removeZombie(e);
         continue;
       }
@@ -919,13 +961,19 @@
         if (Math.random() < 0.05) emit(e.x, e.h * rand(0.2, 1), e.z, [0xdff4ff, 0xa9d8f5], 1, 0.6, 0.06, 0.6, 1);
         continue;
       }
-      // rising from the ground
+      // falling in from the sky (3D: the Scratch enemies just appeared)
       if (e.emerge < 1) {
-        e.emerge = Math.min(1, e.emerge + dt / 0.8);
-        m.position.y = (e.emerge - 1) * e.h;
-        m.position.x = e.x + Math.sin(e.emerge * 60) * 0.03;
-        if (Math.random() < 0.5) emit(e.x + rand(-0.4, 0.4), 0.05, e.z + rand(-0.4, 0.4), [0x3a2a1a, 0x5a4a35, 0x2f4a1f], 1, 2.5, 0.1, 0.6);
-        m.rotation.y = e.yaw;
+        e.emerge = Math.min(1, e.emerge + dt / 0.65);
+        const t = e.emerge;
+        m.position.set(e.x, DROP_H * (1 - t * t), e.z);
+        m.rotation.y = e.yaw + (1 - t) * 4; // spins on the way down
+        if (e.marker) e.marker.scale.setScalar(e.r * (1.2 + t * 1.2));
+        if (t >= 1) {
+          if (e.marker) { scene.remove(e.marker); e.marker = null; }
+          e.squash = 0.5;
+          emit(e.x, 0.1, e.z, [0x5a4a35, 0x3b5d2a, 0x456b30], 6, 3, 0.1 * e.h + 0.05, 0.5);
+          if (G.mode === "playing" && Math.hypot(e.x - P.pos.x, e.z - P.pos.z) < 30) SFX.play("block_land", { x: e.x, z: e.z, vol: 0.4 + e.h * 0.2 });
+        }
         continue;
       }
       // pick a target: the player ("point towards player"), or wander on the title screen
@@ -970,9 +1018,9 @@
       }
       // can't walk through the player
       if (playing) {
-        const px = e.x - P.pos.x, pz = e.z - P.pos.z, rr = e.r + PLAYER_R + 0.32, p2 = px * px + pz * pz; // stop at arm's length
+        const px = e.x - P.pos.x, pz = e.z - P.pos.z, rr = e.r + PLAYER_R + 0.08, p2 = px * px + pz * pz; // bump right up against you
         if (p2 < rr * rr && p2 > 1e-6) { const s = Math.sqrt(p2); e.x = P.pos.x + (px / s) * rr; e.z = P.pos.z + (pz / s) * rr; }
-        if (p2 < (rr + 0.18) * (rr + 0.18) && !wallBetween(e.x, 1, e.z, P.pos.x, 1, P.pos.z)) {
+        if (p2 < (rr + 0.22) * (rr + 0.22) && !wallBetween(e.x, 1, e.z, P.pos.x, 1, P.pos.z)) {
           if (e.type === 8) { if (e.fuse <= 0) { e.fuse = 0.7; SFX.play("boomer_fuse", { x: e.x, z: e.z }); } } else touchingPlayer++;
         }
         if (minion.alive && Math.hypot(e.x - minion.mesh.position.x, e.z - minion.mesh.position.z) < e.r + 0.55) touchingMinion = true;
@@ -981,8 +1029,12 @@
       e.yaw = faceYaw(dx, dz);
       m.rotation.y = e.yaw;
       m.position.set(e.x, 0, e.z);
-      e.phase += moved * (e.type <= 2 ? 6 : e.type === 5 || e.type === 6 || e.type === 7 ? 2.6 : 3.8);
-      animateWalk(m, e.phase, Math.min(0.7, moved / dt / 3 + 0.12));
+      // keep hopping in place while pushing against you
+      const landed = animateBlock(e, playing && moved < sp * dt * 0.3 ? sp * dt * 0.5 : moved, dt);
+      if (landed && playing && m.userData.gait !== "slide") {
+        const dd = Math.hypot(e.x - P.pos.x, e.z - P.pos.z);
+        if (dd < 14) SFX.play(m.userData.gait === "thud" ? "block_land" : "block_hop", { x: e.x, z: e.z, vol: m.userData.gait === "thud" ? 0.5 : 0.35 });
+      }
       // red laser wall and the shield: -15 every ~0.08 s while touching
       if (playing) {
         e.hazardT -= dt;
@@ -992,8 +1044,6 @@
           if (shield.mesh && circleHitsBox(e.x, e.z, e.r, shield.box)) hazard = true;
           if (hazard) { e.hazardT = 0.083; damageZombie(e, 15, "flat"); }
         }
-        e.groanT -= dt;
-        if (e.groanT <= 0) { e.groanT = rand(4, 10); if (Math.hypot(e.x - P.pos.x, e.z - P.pos.z) < 26) SFX.play("zombie_groan", { x: e.x, z: e.z, vol: e.type >= 5 ? 1 : 0.7 }); }
       }
     }
     zombies = zombies.filter((e) => !e.removed);
@@ -1117,6 +1167,7 @@
   function damageBoss(b, amount) {
     b.hp -= amount;
     b.flash = 0.08;
+    b.jelly = 0.6;
     SFX.play("boss_hit", { x: b.x, z: b.z, vol: 0.7 });
     hitmarker(false);
     if (b.hp < 1) killBoss(b);
@@ -1156,20 +1207,31 @@
     for (const b of bosses) {
       const m = b.mesh;
       if (b.dying || b.retreating) {
-        if (b.dieY === undefined) b.dieY = Math.min(0, m.position.y);
-        b.dying += dt / (b.retreating ? 1.2 : 1.6);
-        if (!b.retreating) m.rotation.x = -Math.min(1, b.dying * 1.4) * 0.5 * Math.PI;
-        m.position.y = b.dieY - Math.max(0, b.dying - (b.retreating ? 0 : 0.4)) * b.h * 1.1;
-        if (b.dying > 0.6) setOpacity(m, clamp(1 - (b.dying - 0.6) / 0.4, 0, 1));
-        if (b.dying >= 1) b.removed = true;
+        // squashes flat, then bursts into blocks
+        b.dying += dt / 1.0;
+        const d = Math.min(1, b.dying), body = parts(m).body;
+        if (body) body.scale.set(1 + d * 0.55, Math.max(0.05, 1 - d * 0.9), 1 + d * 0.55);
+        m.position.x = b.x + (Math.random() - 0.5) * 0.12 * (1 - d);
+        if (b.dying >= 1) {
+          const col = { snow: 0xffffff, wall: 0x8ca2eb, flame: 0x9e0000, glide: 0x1bff20, king: 0x2f8a36 }[b.kind] || 0xffffff;
+          if (!b.retreating) emit(b.x, b.h * 0.3, b.z, [col, col, shadeHex(col, 0.7), 0x111111], 40, 7, (m.userData.edge || 3) * 0.16, 1.8);
+          b.removed = true;
+        }
         continue;
       }
       if (b.rise < 1) {
-        b.rise = Math.min(1, b.rise + dt / 1.6);
-        m.position.set(b.x + Math.sin(b.rise * 80) * 0.06, (b.rise - 1) * b.h, b.z);
+        // falls in from the sky and lands with a thud
+        b.rise = Math.min(1, b.rise + dt / 1.1);
+        const t = b.rise;
+        m.position.set(b.x, (DROP_H + 6) * (1 - t * t), b.z);
         m.rotation.y = b.yaw;
-        if (Math.random() < 0.8) emit(b.x + rand(-b.r, b.r), 0.1, b.z + rand(-b.r, b.r), [0x3a2a1a, 0x5a4a35, 0x2f4a1f], 1, 4, 0.18, 0.8);
         b.hittable = b.rise > 0.5;
+        if (t >= 1) {
+          b.squash = 0.6;
+          emit(b.x, 0.2, b.z, [0x5a4a35, 0x3b5d2a, 0x456b30], 30, 6, 0.22, 0.9);
+          SFX.play("block_fall", { x: b.x, z: b.z, vol: 1.3 });
+          G.trauma = Math.min(1, G.trauma + clamp(0.7 - Math.hypot(P.pos.x - b.x, P.pos.z - b.z) / 40, 0.15, 0.6));
+        }
         continue;
       }
       b.hittable = true;
@@ -1185,11 +1247,15 @@
       if (pd < rr && pd > 1e-4) { P.pos.x = b.x + (px / pd) * rr; P.pos.z = b.z + (pz / pd) * rr; keepInArena(P.pos, PLAYER_R); }
       b.yaw = faceYaw(dx, dz);
       const moved = Math.hypot(b.x - ox, b.z - oz);
-      b.phase += moved * (2.2 / Math.max(1, b.h / 3));
       const bob = b.kind === "glide" ? 0.6 + Math.sin(performance.now() / 500) * 0.35 : 0;
       m.position.set(b.x, bob, b.z);
       m.rotation.y = b.yaw;
-      animateWalk(m, b.phase, 0.35, 0);
+      if (animateBlock(b, moved > 1e-4 ? moved : bsp * dt * 0.6, dt) && b.kind !== "glide") {
+        // every boss hop shakes the ground a little
+        const dd = Math.hypot(P.pos.x - b.x, P.pos.z - b.z);
+        SFX.play("block_land", { x: b.x, z: b.z, vol: 0.9 });
+        G.trauma = Math.min(1, G.trauma + clamp(0.25 - dd / 60, 0, 0.18));
+      }
       // hit flash; the Flame Boss cycles colour ("change color effect by 2")
       if (b.flash > 0) b.flash -= dt;
       if (b.kind === "flame") {
@@ -1630,7 +1696,7 @@
       // health bar: two sprites over its head
       const mk = (color) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ color, depthTest: false })); s.center.set(0, 0.5); s.scale.set(1, 0.12, 1); s.renderOrder = 10; return s; };
       minion.bar = mk(0x0b1b1b); minion.fill = mk(0x00fff9);
-      minion.bar.position.set(-0.5, 1.6, 0); minion.fill.position.set(-0.5, 1.6, 0.001);
+      minion.bar.position.set(-0.5, 1.4, 0); minion.fill.position.set(-0.5, 1.4, 0.001);
       minion.mesh.add(minion.bar, minion.fill);
     }
     fwd(tmpV);
@@ -1670,12 +1736,13 @@
     // "glide 1 secs to random position, wait 1"
     if (minion.phase === 0) {
       minion.t = Math.min(1, minion.t + dt);
+      tmpV2.copy(m.position);
       m.position.lerpVectors(minion.from, minion.to, minion.t);
-      animateWalk(m, minion.t * 14, 0.5);
+      animateBlock(minion, tmpV2.distanceTo(m.position), dt);
       if (minion.t >= 1) { minion.phase = 1; minion.t = 0; }
     } else {
       minion.t += dt;
-      animateWalk(m, 0, 0);
+      animateBlock(minion, 0, dt);
       if (minion.t >= 1) {
         minion.phase = 0; minion.t = 0;
         minion.from.copy(m.position);
@@ -1720,7 +1787,7 @@
       G.bountyTime = 0;
       popup("+" + pay, bounty.x, 2.4, bounty.z);
       emit(bounty.x, 1, bounty.z, [0x7bac00, 0xff0000, 0x111111], 30, 5, 0.14, 1);
-      SFX.play("kill", { x: bounty.x, z: bounty.z });
+      SFX.play("block_pop", { x: bounty.x, z: bounty.z });
       hitmarker(true);
       banner("BOUNTY CLAIMED", "+" + pay + "$", 2.5);
       removeBounty();
@@ -1751,10 +1818,9 @@
     const ox = b.x, oz = b.z;
     tmpV.lerpVectors(b.from, b.to, b.t);
     b.x = tmpV.x; b.z = tmpV.z;
-    b.phase += Math.hypot(b.x - ox, b.z - oz) * 4;
     b.mesh.position.set(b.x, 0, b.z);
     b.mesh.rotation.y = faceYaw(P.pos.x - b.x, P.pos.z - b.z);
-    animateWalk(b.mesh, b.phase, 0.6);
+    animateBlock(b, Math.hypot(b.x - ox, b.z - oz), dt);
     if (b.flash > 0) b.flash -= dt;
     setEmissive(b.mesh, 0xffffff, b.flash > 0 ? 0.6 : 0);
     setOpacity(b.mesh, b.visible ? 1 : 0.08 + Math.random() * 0.06);
@@ -1813,7 +1879,7 @@
     G.timeAcc += dt;
     while (G.timeAcc >= 1) { G.timeAcc -= 1; G.time++; }
     const grow = (G.time >= 180) + (G.time >= 360) + (G.time >= 600); // balance: +1 spawner at 3, 6 and 10 minutes
-    if (grow > G.hordeGrow) { G.hordeGrow = grow; G.spawners++; banner("THE HORDE GROWS", "More zombies from now on", 3); SFX.play("warning"); }
+    if (grow > G.hordeGrow) { G.hordeGrow = grow; G.spawners++; banner("THE HORDE GROWS", "More blocks from now on", 3); SFX.play("warning"); }
     // regeneration upgrades
     if (G.selfheal && G.hp < 25) { G.regenSelf += dt; if (G.regenSelf >= 1) { G.regenSelf = 0; healPlayer(1, null); } }
     if (G.armored && G.hp < 50) { G.regenArmor += dt; if (G.regenArmor >= 5) { G.regenArmor = 0; healPlayer(1, null); } }
@@ -1853,7 +1919,10 @@
       playerMesh.position.set(P.pos.x, 0, P.pos.z);
       playerMesh.rotation.y = P.yaw + Math.PI;
       playerMesh.rotation.x = G.mode === "dead" ? -Math.min(1, G.deathT * 1.8) * Math.PI / 2 : 0; // fall on your back
-      animateWalk(playerMesh, G.walkPhase, P.moving ? (G.sprinting ? 0.8 : 0.55) : 0, 0);
+      const pm = Math.hypot(P.pos.x - (P.lastX ?? P.pos.x), P.pos.z - (P.lastZ ?? P.pos.z));
+      P.lastX = P.pos.x; P.lastZ = P.pos.z;
+      playerAnim.mesh = playerMesh;
+      animateBlock(playerAnim, pm * 0.6, dt);
       const pr = parts(playerMesh);
       if (pr.armR) pr.armR.rotation.x = -Math.PI / 2 - P.pitch * 0.9 - G.recoil * 0.2;
       if (pr.armL) pr.armL.rotation.x = -Math.PI / 2.4 - P.pitch * 0.9;
@@ -2037,7 +2106,7 @@
       $("minionTxt").textContent = minion.alive ? "" : "back in " + Math.ceil(minion.respawn) + " s";
     }
     const zc = zombies.filter((e) => !e.dying).length;
-    if (zc !== hud.zc) { hud.zc = zc; $("zcount").textContent = zc + " zombies"; }
+    if (zc !== hud.zc) { hud.zc = zc; $("zcount").textContent = zc + " blocks"; }
     const needClick = G.mode === "playing" && !locked && !TOUCH;
     const touchOn = TOUCH && G.mode === "playing";
     if (touchOn !== hud.touchOn) { hud.touchOn = touchOn; show("touchUI", touchOn); if (!touchOn) resetTouch(); }
@@ -2161,7 +2230,7 @@
     [14, "3 golden apples are waiting for you!", () => { G.pendingApples += 3; }],
     [14, "Double money for 60 s!", () => { G.moneyMult = 2; G.moneyMultT = 60; }],
     [8, "Free helmet!", () => { G.helmet = 5; buildHelmet(); refreshExtras(); }],
-    [23, "Bad luck... 6 zombies are waiting for you", () => { G.luckyZombies += 6; }],
+    [23, "Bad luck... 6 blocks are waiting for you", () => { G.luckyZombies += 6; }],
     [3, "JACKPOT!!! +2000$", () => { G.money += 2000; }],
   ];
   function luckyBlock() {

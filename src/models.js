@@ -14,7 +14,6 @@
   // shared round shapes (made once: creating them per projectile leaked GPU memory)
   const SNOW_GEO = new T.IcosahedronGeometry(0.24, 0);
   const BIG_SNOW_GEO = new T.IcosahedronGeometry(0.5, 1);
-  const GOO_GEO = new T.IcosahedronGeometry(0.28, 0);
   const LASER_FLOOR_GEO = new T.PlaneGeometry(0.9, 4.4);
   const PI = Math.PI;
 
@@ -78,89 +77,254 @@
     return o;
   }
 
-  /* A blocky humanoid. Returns the root group with the creature userData contract filled in;
-   * extra details are added by the callers through userData.dims. */
-  function humanoid(o) {
-    const H = o.H, pal = o.pal;
-    const legH = 0.42 * H, legW = 0.13 * H * (o.legK || 1);
-    const tw = (o.wide || 0.3) * H, td = 0.17 * H * (o.deep || 1), th = 0.32 * H;
-    const hs = 0.24 * H * (o.headK || 1), aw = 0.11 * H * (o.armK || 1), ah = 0.33 * H;
-    const hipY = legH, neckY = hipY + th;
+  // ================================================================ living cubes
+  // Every creature is a block with black eyes, like the Scratch costumes. Each one has a
+  // `body` pivot at its bottom centre: the game squashes, stretches and hops it from there.
+  // Limb pivots exist (empty) so the old animation contract never breaks.
+  function cube(o) {
+    const pal = o.pal;
     const root = new T.Group();
-
-    let legL, legR;
-    if (o.noLegs) {
-      legL = pivot(root, tw * 0.25, hipY, 0);
-      legR = pivot(root, -tw * 0.25, hipY, 0);
-    } else {
-      legL = pivot(root, tw * 0.25, hipY, 0);
-      legR = pivot(root, -tw * 0.25, hipY, 0);
-      for (const leg of [legL, legR]) {
-        box(leg, legW, legH * 0.82, legW * 1.05, pal.get(o.pants), 0, -legH * 0.41, 0);
-        box(leg, legW * 1.1, legH * 0.18, legW * 1.3, pal.get(o.shoe), 0, -legH * 0.91, legW * 0.1);
-      }
+    const body = pivot(root, 0, o.lift || 0, 0);
+    const e = o.edge;
+    let core = null;
+    if (!o.noCube) core = box(body, e, e, e, o.mat || pal.get(o.color), 0, e / 2, 0);
+    const fz = e / 2 + 0.012;
+    if (o.eyes !== false) {
+      const eyeM = pal.get(o.eye === undefined ? 0x000000 : o.eye, o.eyeGlow || 0);
+      const s = e * (o.eyeK || 0.17), y = e * (o.eyeY || 0.64);
+      const wob = () => (Math.random() - 0.5) * e * 0.04; // each cube looks a tiny bit different
+      box(body, s * (o.bigEye ? 1.15 : 1), s * (o.bigEye ? 1.25 : 1), 0.03, eyeM, -e * 0.21, y + wob(), fz, false);
+      box(body, s, s, 0.03, eyeM, e * 0.21, y + wob(), fz, false);
     }
-    const body = pivot(root, 0, 0, 0);
-    box(body, tw, th, td, pal.get(o.shirt), 0, hipY + th / 2, 0);
-    const head = pivot(body, 0, neckY, 0);
-    box(head, hs, hs, hs, pal.get(o.skin), 0, hs / 2, 0);
-    const fz = hs / 2 + 0.006 * H;
-    const eyeM = pal.get(o.eye === undefined ? 0x000000 : o.eye, o.eyeGlow || 0);
-    const e = hs * 0.2;
-    if (o.creepy) {
-      box(head, e * 1.15, e * 1.25, 0.012 * H, eyeM, -hs * 0.22, hs * 0.55, fz, false);
-      box(head, e * 0.85, e * 0.85, 0.012 * H, eyeM, hs * 0.22, hs * 0.62, fz, false);
-    } else {
-      box(head, e, e, 0.012 * H, eyeM, -hs * 0.22, hs * 0.6, fz, false);
-      box(head, e, e, 0.012 * H, eyeM, hs * 0.22, hs * 0.6, fz, false);
-    }
-    if (o.mouth !== null) box(head, hs * (o.mouthW || 0.42), hs * (o.mouthH || 0.08), 0.012 * H, pal.get(o.mouth === undefined ? 0x000000 : o.mouth), o.mouthX || 0, hs * 0.27, fz, false);
-    const headTop = marker(head, 0, hs, 0);
-
-    const shY = neckY - 0.02 * H;
-    const armL = pivot(body, tw / 2 + aw / 2, shY, 0); // facing +Z, the character's left is +X
-    const armR = pivot(body, -(tw / 2 + aw / 2), shY, 0);
-    for (const arm of [armL, armR]) {
-      box(arm, aw, ah * 0.62, aw, pal.get(o.sleeve || o.shirt), 0, -ah * 0.31, 0);
-      box(arm, aw * 0.94, ah * 0.38, aw * 0.94, pal.get(o.hand || o.skin), 0, -ah * 0.81, 0);
-    }
-    // hands are rotated so a child's +Z runs down the arm (a gun held in it points where the arm points)
-    const handR = pivot(armR, 0, -ah, 0); handR.rotation.x = PI / 2;
-    const handL = pivot(armL, 0, -ah, 0); handL.rotation.x = PI / 2;
-
-    const armBase = o.armBase || 0;
-    armL.rotation.x = armR.rotation.x = armBase;
+    if (o.mouth) box(body, e * (o.mouthW || 0.4), e * 0.07, 0.03, pal.get(o.mouth), 0, e * 0.34, fz, false);
+    const blank = () => new T.Group();
+    const head = pivot(body, 0, e, 0);
+    const parts = { body, head, armL: o.armL || blank(), armR: o.armR || blank(), legL: blank(), legR: blank() };
     root.userData = {
-      parts: { body, head, armL, armR, legL, legR },
-      armBase, radius: o.radius, height: neckY + hs, mats: pal.list,
-      headTop, handR, handL, muzzle: marker(handR, 0, 0, 0.08 * H),
-      dims: { H, tw, td, th, hs, hipY, neckY, aw, ah, fz },
+      parts, armBase: 0, radius: o.radius || e * 0.58, height: (o.lift || 0) + e, mats: pal.list,
+      headTop: marker(body, 0, e, 0), muzzle: marker(body, 0, e * 0.5, fz + 0.15), edge: e, gait: o.gait || "slide", lift: o.lift || 0,
+      dims: { e, fz }, core,
     };
     return root;
   }
+  // black cap with a brim, like the helmet costumes
+  function cap(body, e, pal) {
+    const m = pal.get(0x0d0d0d);
+    box(body, e * 1.08, e * 0.24, e * 1.08, m, 0, e + e * 0.1, 0);
+    box(body, e * 1.12, e * 0.06, e * 0.24, m, 0, e - e * 0.01, e * 0.5);
+  }
 
-  // ---------------------------------------------------------------- player
+  // ---------------------------------------------------------------- player (lime square with eyes + mouth)
   function player(opts) {
     const armored = !!(opts && opts.armored);
     const pal = palette();
-    const g = humanoid({
-      H: 1.8, pal, radius: 0.4, skin: 0xd3ff66, shirt: armored ? 0x2b2b2b : 0x4b5a2a, sleeve: armored ? 0x1a1a1a : 0x55652f,
-      pants: armored ? 0x1f1f1f : 0x3a3f2a, shoe: 0x141414, mouthW: 0.5, mouthH: 0.07,
-    });
-    const d = g.userData.dims, p = g.userData.parts;
-    // belt + a pocket so the soldier reads from behind
-    box(p.body, d.tw * 1.04, 0.06, d.td * 1.06, pal.get(armored ? 0x111111 : 0x2a2414), 0, d.hipY + 0.04, 0);
+    const e = 1.2;
+    // floating mitten blocks; the gun hangs off the right one
+    const mk = (x) => {
+      const p = new T.Group();
+      p.position.set(x, e * 0.62, 0);
+      const hand = pivot(p, 0, -0.42, 0); hand.rotation.x = PI / 2;
+      box(p, 0.26, 0.26, 0.26, pal.get(armored ? 0x2b2b2b : 0xc4f055), 0, -0.42, 0);
+      return { p, hand };
+    };
+    const R = mk(-(e / 2 + 0.24)), L = mk(e / 2 + 0.24); // facing +Z, the right side is -X
+    const g = cube({ pal, edge: e, color: 0xd3ff66, mouth: 0x000000, mouthW: 0.46, radius: 0.4, armR: R.p, armL: L.p, gait: "hop" });
+    const p = g.userData.parts;
+    p.body.add(R.p, L.p);
+    g.userData.handR = R.hand;
+    g.userData.handL = L.hand;
     if (armored) {
-      const plate = pal.get(0x1a1a1a), plate2 = pal.get(0x333333);
-      box(p.body, d.tw * 1.1, d.th * 0.72, 0.06, plate, 0, d.hipY + d.th * 0.55, d.td / 2 + 0.03);
-      box(p.body, d.tw * 1.1, d.th * 0.72, 0.06, plate, 0, d.hipY + d.th * 0.55, -d.td / 2 - 0.03);
-      box(p.armL, d.aw * 1.5, 0.12, d.aw * 1.5, plate2, 0, -0.03, 0);
-      box(p.armR, d.aw * 1.5, 0.12, d.aw * 1.5, plate2, 0, -0.03, 0);
-      box(p.legL, 0.16, 0.14, 0.06, plate2, 0, -0.38, 0.09);
-      box(p.legR, 0.16, 0.14, 0.06, plate2, 0, -0.38, 0.09);
-    } else {
-      box(p.body, d.tw * 0.3, d.th * 0.25, 0.05, pal.get(0x3c4822), d.tw * 0.22, d.hipY + d.th * 0.6, d.td / 2 + 0.02);
+      const plate = pal.get(0x1a1a1a), rim = pal.get(0x333333);
+      box(p.body, 0.06, e * 0.9, e * 0.9, plate, -e / 2 - 0.03, e / 2, 0);
+      box(p.body, 0.06, e * 0.9, e * 0.9, plate, e / 2 + 0.03, e / 2, 0);
+      box(p.body, e * 0.9, e * 0.9, 0.06, plate, 0, e / 2, -e / 2 - 0.03);
+      box(p.body, e * 1.04, 0.08, e * 1.04, rim, 0, e + 0.04, 0);
+      box(p.body, e * 1.04, 0.12, e * 1.04, rim, 0, 0.06, 0);
     }
+    // helmet (built for a 0.43 m head) scaled to the cube
+    g.userData.headTop.scale.setScalar(e / 0.43 * 0.92);
+    return g;
+  }
+
+  // ---------------------------------------------------------------- the horde
+  // 1/2 mini (hops fast), 3/4 normal (slides), 5/6 big (heavy thuds); even types wear a cap.
+  const ZCOL = { 1: 0x7bac00, 2: 0x7bac00, 3: 0x9cda00, 4: 0x9cda00, 5: 0x00d9b1, 6: 0x00d9b1 };
+  function zombie(type) {
+    const t = Math.max(1, Math.min(10, type | 0));
+    const pal = palette();
+    if (t <= 6) {
+      const size = t <= 2 ? 0 : t <= 4 ? 1 : 2;
+      const e = [0.85, 1.25, 1.9][size];
+      const g = cube({ pal, edge: e, color: ZCOL[t], bigEye: Math.random() < 0.5, gait: ["hop", "slide", "thud"][size] });
+      if (t % 2 === 0) { cap(g.userData.parts.body, e, pal); g.userData.height = e * 1.22; }
+      return g;
+    }
+    if (t === 7) {
+      // Splitter: a big orange block made of eight smaller ones
+      const e = 1.5, s = e / 2 - 0.03;
+      const g = cube({ pal, edge: e, noCube: true, gait: "thud", eyeY: 0.7, eyeK: 0.15 });
+      const b = g.userData.parts.body;
+      const shades = [0xff8a00, 0xf07c00, 0xff9a24, 0xe87400];
+      let k = 0;
+      for (const x of [-1, 1]) for (const y of [0, 1]) for (const z of [-1, 1]) box(b, s, s, s, pal.get(shades[k++ % 4]), x * (s / 2 + 0.015), s / 2 + y * (s + 0.03), z * (s / 2 + 0.015));
+      return g;
+    }
+    if (t === 8) {
+      // Boomer: a TNT block with a face and a lit fuse
+      const e = 1.15;
+      const g = cube({ pal, edge: e, color: 0xc8160e, eyeY: 0.8, eyeK: 0.15, gait: "hop" });
+      const b = g.userData.parts.body;
+      const tex = tntTexture();
+      if (tex && !tntMat) tntMat = new T.MeshLambertMaterial({ map: tex });
+      box(b, e * 1.03, e * 0.36, e * 1.03, tntMat || pal.get(0xf2f2f2), 0, e * 0.42, 0, false);
+      box(b, 0.05, 0.22, 0.05, pal.get(0x111111), e * 0.18, e + 0.11, 0, false);
+      g.userData.fuse = box(b, 0.09, 0.09, 0.09, pal.get(0xffdd78, 0xffaa00), e * 0.18, e + 0.25, 0, false);
+      return g;
+    }
+    if (t === 9) {
+      // Spitter: a see-through slime cube with a darker core
+      const e = 1.2;
+      const slime = new T.MeshLambertMaterial({ color: 0x6cff2a, emissive: 0x1a5a00, transparent: true, opacity: 0.55, depthWrite: false });
+      pal.list.push(slime);
+      const g = cube({ pal, edge: e, mat: slime, eyeY: 0.6, gait: "slide", mouth: 0x1d6a00, mouthW: 0.3 });
+      const b = g.userData.parts.body;
+      box(b, e * 0.55, e * 0.55, e * 0.55, pal.get(0x2a8a00, 0x0e3a00), 0, e * 0.45, -e * 0.05);
+      g.userData.core.castShadow = true;
+      return g;
+    }
+    // 10 Shield guy: grey block that pushes a black wall block in front of itself
+    const e = 1.25;
+    const g = cube({ pal, edge: e, color: 0x9aa3ad, gait: "slide" });
+    const b = g.userData.parts.body;
+    cap(b, e, pal);
+    const sh = pivot(b, 0, 0, e / 2 + 0.38);
+    box(sh, 1.35, 1.45, 0.16, pal.get(0x141414), 0, 0.78, 0);
+    box(sh, 1.2, 0.09, 0.18, pal.get(0x3a3a3a), 0, 1.3, 0, false);
+    box(sh, 1.2, 0.09, 0.18, pal.get(0x3a3a3a), 0, 0.28, 0, false);
+    box(sh, 0.4, 0.12, 0.18, pal.get(0x6a6f75), 0, 1.05, 0, false);
+    g.userData.shield = sh;
+    g.userData.height = e * 1.22;
+    return g;
+  }
+
+  // ---------------------------------------------------------------- bosses: giant cubes with personality
+  function flame(parent, x, y, z, s, pal, list) {
+    const fg = pivot(parent, x, y, z);
+    box(fg, s, s * 1.1, s, pal.get(0xf48d0d, 0xc94210), 0, s * 0.55, 0, false);
+    box(fg, s * 0.6, s * 0.9, s * 0.6, pal.get(0xffdd78, 0xf48d0d), s * 0.05, s * 1.25, -s * 0.05, false);
+    box(fg, s * 0.3, s * 0.5, s * 0.3, pal.get(0xfb0000, 0x9e0000), -s * 0.18, s * 1.75, s * 0.1, false);
+    list.push(fg);
+    return fg;
+  }
+  function boss(kind) {
+    const pal = palette();
+    let g;
+    if (kind === "snow") {
+      // a snowy cube with a carrot nose and stick arms
+      const e = 2.8;
+      g = cube({ pal, edge: e, color: 0xffffff, eyeK: 0.12, radius: 1.6, gait: "thud", mouth: 0x1a1a1a, mouthW: 0.35 });
+      const b = g.userData.parts.body;
+      box(b, e * 1.06, e * 0.16, e * 1.06, pal.get(0xeaf6ff), 0, e + e * 0.04, 0); // snow on top
+      box(b, e * 0.5, e * 0.1, e * 0.5, pal.get(0xf8fcff), e * 0.12, e + e * 0.16, -e * 0.1);
+      const nose = box(b, 0.22, 0.22, 0.9, pal.get(0xff8a1a), 0, e * 0.5, e / 2 + 0.45);
+      nose.rotation.x = -0.12;
+      const stick = pal.get(0x5a3a1e);
+      const armR = pivot(b, -e / 2, e * 0.55, 0), armL = pivot(b, e / 2, e * 0.55, 0);
+      box(armR, 1.3, 0.14, 0.14, stick, -0.6, 0.25, 0).rotation.z = -0.45;
+      box(armL, 1.3, 0.14, 0.14, stick, 0.6, 0.25, 0).rotation.z = 0.45;
+      box(armR, 0.4, 0.4, 0.4, pal.get(0xffffff), -1.2, 0.55, 0); // snowball in hand
+      g.userData.muzzle = marker(armR, -1.2, 0.55, 0.3);
+      g.userData.parts.armR = armR; g.userData.parts.armL = armL;
+    } else if (kind === "wall") {
+      // a brick cube
+      const e = 3.6;
+      g = cube({ pal, edge: e, color: 0x5f73b8, eyes: false, radius: 2.0, gait: "thud" });
+      const b = g.userData.parts.body;
+      const b1 = pal.get(0x8ca2eb), b2 = pal.get(0x9db0f0);
+      const rows = 4, gap = 0.08, bh = e / rows - gap;
+      const full = [[-e / 3, e / 3], [0, e / 3], [e / 3, e / 3]];
+      const half = [[-e / 2 + e / 12, e / 6], [-e / 6, e / 3], [e / 6, e / 3], [e / 2 - e / 12, e / 6]];
+      for (let r = 0; r < rows; r++) {
+        const y = gap / 2 + bh / 2 + r * (bh + gap);
+        (r % 2 ? half : full).forEach(([x, w], i) => {
+          const m = (r + i) % 2 ? b1 : b2, ww = w - gap;
+          box(b, ww, bh, 0.1, m, x, y, e / 2 + 0.04, false);
+          box(b, ww, bh, 0.1, m, -x, y, -e / 2 - 0.04, false);
+          box(b, 0.1, bh, ww, m, -e / 2 - 0.04, y, x, false);
+          box(b, 0.1, bh, ww, m, e / 2 + 0.04, y, -x, false);
+        });
+      }
+      const fz = e / 2 + 0.11, black = pal.get(0x000000);
+      box(b, e * 0.15, e * 0.15, 0.04, black, -e * 0.21, e * 0.66, fz, false);
+      box(b, e * 0.15, e * 0.15, 0.04, black, e * 0.21, e * 0.66, fz, false);
+      box(b, e * 0.7, e * 0.09, 0.1, pal.get(0x3d4a80), 0, e * 0.82, fz, false); // angry brow
+      g.userData.muzzle = marker(b, 0, e * 0.5, e / 2 + 0.3);
+    } else if (kind === "flame") {
+      const e = 4.2;
+      const flames = [];
+      g = cube({ pal, edge: e, color: 0x9e0000, eyeK: 0.13, mouth: 0xffffff, mouthW: 0.5, radius: 2.3, gait: "thud" });
+      const b = g.userData.parts.body;
+      box(b, e * 1.02, e * 0.12, e * 1.02, pal.get(0x3a0a05), 0, e * 0.06, 0); // charred bottom
+      for (const [x, z, s] of [[-0.3, -0.2, 0.75], [0.05, 0.2, 0.95], [0.32, -0.15, 0.7], [-0.1, -0.35, 0.6], [0.3, 0.3, 0.55]]) flame(b, x * e, e, z * e, s, pal, flames);
+      const ember = pal.get(0xf48d0d, 0xc94210);
+      [[-0.32, 0.18, 0.4], [0.3, 0.12, -0.5], [-0.05, 0.2, 0.2]].forEach(([x, y, r]) => { box(b, e * 0.22, e * 0.04, 0.04, ember, e * x, e * y, e / 2 + 0.02, false).rotation.z = r; });
+      g.userData.flames = flames;
+      g.userData.muzzle = marker(b, 0, e * 0.34, e / 2 + 0.3);
+    } else if (kind === "glide") {
+      // a floating cube with thrusters
+      const e = 3.8, lift = 1.0;
+      g = cube({ pal, edge: e, color: 0x1bff20, eyeK: 0.13, eyeY: 0.6, radius: 2.1, lift, gait: "float" });
+      const b = g.userData.parts.body;
+      for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) {
+        box(b, 0.6, 0.5, 0.6, pal.get(0x0e9a12), x * e, -0.25, z * e);
+        box(b, 0.4, 0.3, 0.4, glow(0x9dff8a, 0.7), x * e, -0.6, z * e, false);
+      }
+      box(b, e * 0.18, e * 0.12, 0.1, pal.get(0xff0000, 0xcc0000), 0, e * 0.86, e / 2 + 0.05, false);
+      g.userData.muzzle = marker(b, 0, e * 0.86, e / 2 + 0.3);
+    } else if (kind === "king") {
+      // the Block King: crown, red cape, gold trim
+      const e = 4.4;
+      g = cube({ pal, edge: e, color: 0x2f8a36, eyeK: 0.13, mouth: 0x000000, mouthW: 0.42, radius: 2.4, gait: "thud" });
+      const b = g.userData.parts.body;
+      const gold = pal.get(0xffe500, 0x3a3000), gem = pal.get(0xff1a1a, 0x660000);
+      box(b, e * 0.8, e * 0.14, e * 0.8, gold, 0, e + e * 0.07, 0);
+      for (const [x, z] of [[-0.32, 0.32], [0, 0.32], [0.32, 0.32], [-0.32, -0.32], [0.32, -0.32], [0, -0.32], [-0.32, 0], [0.32, 0]]) box(b, e * 0.14, e * 0.2, e * 0.14, gold, x * e, e + e * 0.24, z * e);
+      box(b, e * 0.12, e * 0.12, 0.06, gem, 0, e + e * 0.07, e * 0.41, false);
+      box(b, e * 1.04, e * 0.08, e * 1.04, gold, 0, e * 0.04, 0);
+      box(b, e * 0.96, e * 0.92, 0.12, pal.get(0xb3140e), 0, e * 0.5, -e / 2 - 0.08); // cape
+      box(b, e * 0.96, e * 0.06, 0.14, gold, 0, e * 0.96, -e / 2 - 0.08);
+      g.userData.muzzle = marker(b, 0, e * 0.5, e / 2 + 0.3);
+    } else {
+      // bounty: an outlaw block with a hat, red eyes and a target
+      const e = 1.35;
+      g = cube({ pal, edge: e, color: 0x7bac00, eye: 0xff0000, eyeGlow: 0xaa0000, radius: 0.75, gait: "hop" });
+      const b = g.userData.parts.body;
+      const hat = pal.get(0x1a1a1f);
+      box(b, e * 1.3, 0.07, e * 1.3, hat, 0, e + 0.04, 0);
+      box(b, e * 0.75, e * 0.38, e * 0.75, hat, 0, e + 0.07 + e * 0.19, 0);
+      box(b, e * 0.77, 0.07, e * 0.77, pal.get(0xb3140e), 0, e + 0.12, 0, false);
+      const zf = e / 2 + 0.015;
+      box(b, e * 0.46, e * 0.46, 0.02, pal.get(0xff0000, 0x550000), 0, e * 0.3, zf, false);
+      box(b, e * 0.3, e * 0.3, 0.02, pal.get(0xffffff), 0, e * 0.3, zf + 0.01, false);
+      box(b, e * 0.14, e * 0.14, 0.02, pal.get(0xff0000, 0x550000), 0, e * 0.3, zf + 0.02, false);
+    }
+    return g;
+  }
+
+  // ---------------------------------------------------------------- minion: a hopping cyan block
+  function minion() {
+    const pal = palette();
+    const e = 0.78;
+    const armR = new T.Group(); armR.position.set(-(e / 2 + 0.1), e * 0.5, 0);
+    const g = cube({ pal, edge: e, color: 0x00fff9, radius: 0.42, armR, gait: "hop", mouth: 0x000000, mouthW: 0.36 });
+    const b = g.userData.parts.body;
+    b.add(armR);
+    box(armR, 0.16, 0.16, 0.5, pal.get(0x1c2a2a), 0, 0, 0.16);
+    box(armR, 0.09, 0.09, 0.12, pal.get(0x000000), 0, 0, 0.44);
+    box(b, 0.04, 0.2, 0.04, pal.get(0x1c2a2a), 0, e + 0.1, 0, false);
+    box(b, 0.1, 0.1, 0.1, pal.get(0x00fff9, 0x00a8a4), 0, e + 0.24, 0, false);
+    g.userData.muzzle = marker(armR, 0, 0, 0.52);
+    g.userData.headTop = marker(b, 0, e + 0.3, 0);
     return g;
   }
 
@@ -196,192 +360,6 @@
       else { c.scale.set(len, 0.012, 0.016); c.position.set(x, y + 0.012, z); c.rotation.y = ang; }
       g.add(c);
     }
-    return g;
-  }
-
-  // ---------------------------------------------------------------- zombies
-  const ZCOL = { 1: 0x7bac00, 2: 0x7bac00, 3: 0x9cda00, 4: 0x9cda00, 5: 0x00d9b1, 6: 0x00d9b1 };
-  function zombie(type) {
-    if ((type | 0) >= 7) return newZombie(type | 0);
-    const t = Math.max(1, Math.min(6, type | 0));
-    const size = t <= 2 ? "mini" : t <= 4 ? "normal" : "big";
-    const skin = ZCOL[t];
-    const pal = palette();
-    const spec = {
-      mini: { H: 1.3, radius: 0.35, wide: 0.3, headK: 1.18, armK: 1 },
-      normal: { H: 1.9, radius: 0.45, wide: 0.3, headK: 1, armK: 1 },
-      big: { H: 2.8, radius: 0.7, wide: 0.4, headK: 0.9, armK: 1.35, legK: 1.25, deep: 1.25 },
-    }[size];
-    const shirt = { mini: 0x5a4a3a, normal: 0x4a5560, big: 0x5b3f33 }[size];
-    const pants = { mini: 0x2f3a4a, normal: 0x3a3226, big: 0x2b2b30 }[size];
-    const g = humanoid(Object.assign({
-      pal, skin, shirt, sleeve: shade(shirt, 0.85), pants, shoe: 0x1b1712, hand: shade(skin, 0.9),
-      creepy: true, mouth: 0x2a0808, mouthW: 0.36, mouthH: 0.1, mouthX: 0.02, armBase: -PI / 2,
-    }, spec));
-    const d = g.userData.dims, p = g.userData.parts, H = d.H;
-    // torn clothes: skin showing through and a dark stain
-    box(p.body, d.tw * 0.3, d.th * 0.28, 0.02, pal.get(shade(skin, 0.85)), -d.tw * 0.18, d.hipY + d.th * 0.35, d.td / 2 + 0.008, false);
-    box(p.body, d.tw * 0.22, d.th * 0.2, 0.02, pal.get(0x3a1410), d.tw * 0.22, d.hipY + d.th * 0.72, d.td / 2 + 0.008, false);
-    if (t === 2 || t === 4 || t === 6) {
-      // black helmet (same shape as the player's), sat on the head
-      const helm = pal.get(0x0d0d0d);
-      const hs = d.hs;
-      box(p.head, hs * 1.16, hs * 0.42, hs * 1.16, helm, 0, hs * 0.86, -hs * 0.01);
-      box(p.head, hs * 1.2, hs * 0.08, hs * 0.22, helm, 0, hs * 0.66, hs * 0.5);
-    } else {
-      // a little hair tuft on bare heads
-      box(p.head, d.hs * 0.5, d.hs * 0.1, d.hs * 0.5, pal.get(shade(skin, 0.6)), -d.hs * 0.12, d.hs * 1.04, -d.hs * 0.1, false);
-    }
-    g.userData.height = d.neckY + d.hs * (t % 2 === 0 ? 1.08 : 1);
-    void H;
-    return g;
-  }
-
-  // ---------------------------------------------------------------- bosses
-  function flame(parent, x, y, z, s, pal, list) {
-    const fg = pivot(parent, x, y, z);
-    box(fg, s, s * 1.1, s, pal.get(0xf48d0d, 0xc94210), 0, s * 0.55, 0, false);
-    box(fg, s * 0.6, s * 0.9, s * 0.6, pal.get(0xffdd78, 0xf48d0d), s * 0.05, s * 1.25, -s * 0.05, false);
-    box(fg, s * 0.3, s * 0.5, s * 0.3, pal.get(0xfb0000, 0x9e0000), -s * 0.18, s * 1.75, s * 0.1, false);
-    list.push(fg);
-    return fg;
-  }
-  function icicle(parent, x, y, z, s, mat, tilt) {
-    const ig = pivot(parent, x, y, z);
-    ig.rotation.z = tilt || 0;
-    box(ig, s, s * 1.2, s, mat, 0, s * 0.6, 0, false);
-    box(ig, s * 0.65, s * 1.1, s * 0.65, mat, 0, s * 1.65, 0, false);
-    box(ig, s * 0.3, s * 0.9, s * 0.3, mat, 0, s * 2.6, 0, false);
-    return ig;
-  }
-
-  function boss(kind) {
-    const pal = palette();
-    let g;
-    if (kind === "snow") {
-      g = humanoid({ H: 3.2, pal, radius: 1.0, wide: 0.36, skin: 0xffffff, shirt: 0xdff4ff, sleeve: 0xcfeaff, pants: 0xb9dcf2, shoe: 0x8fbfe0, hand: 0xf0f9ff, mouth: 0x1a3048, mouthW: 0.5, armK: 1.2, legK: 1.15 });
-      const d = g.userData.dims, p = g.userData.parts;
-      const ice = pal.get(0xe8f8ff, 0x203848);
-      icicle(p.head, -d.hs * 0.3, d.hs, 0, 0.13, ice, 0.15);
-      icicle(p.head, 0.02, d.hs, -d.hs * 0.1, 0.16, ice, 0);
-      icicle(p.head, d.hs * 0.32, d.hs, 0.02, 0.12, ice, -0.2);
-      icicle(p.armL, 0, 0.02, 0, 0.14, ice, 0.35);
-      icicle(p.armR, 0, 0.02, 0, 0.14, ice, -0.35);
-      // frosted belly + a snowball in hand
-      box(p.body, d.tw * 0.6, d.th * 0.45, 0.04, pal.get(0xa9d8f5), 0, d.hipY + d.th * 0.4, d.td / 2 + 0.02, false);
-      box(g.userData.handR, 0.34, 0.34, 0.34, pal.get(0xffffff), 0, 0, 0.12);
-    } else if (kind === "wall") {
-      g = humanoid({ H: 5, pal, radius: 1.4, wide: 0.38, deep: 1.2, skin: 0x8ca2eb, shirt: 0x5f73b8, sleeve: 0x7085c8, pants: 0x4c5c99, shoe: 0x2e3866, hand: 0x8ca2eb, mouth: 0x000000, armK: 1.45, legK: 1.3 });
-      const d = g.userData.dims, p = g.userData.parts;
-      // bricks on the chest and back over the darker "mortar" torso
-      const b1 = pal.get(0x8ca2eb), b2 = pal.get(0x9db0f0);
-      const bw = d.tw * 0.46, bh = d.th * 0.28;
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 2; c++) {
-          const off = r % 2 ? bw * 0.25 : -bw * 0.25;
-          const x = (c - 0.5) * (bw + 0.06) + off * 0.5;
-          const y = d.hipY + bh * 0.6 + r * (bh + 0.06);
-          box(p.body, bw, bh, 0.08, (r + c) % 2 ? b1 : b2, x, y, d.td / 2 + 0.03);
-          box(p.body, bw, bh, 0.08, (r + c) % 2 ? b2 : b1, x, y, -d.td / 2 - 0.03);
-        }
-      }
-      // heavy brow
-      box(p.head, d.hs * 1.08, d.hs * 0.14, d.hs * 0.3, pal.get(0x5f73b8), 0, d.hs * 0.8, d.hs * 0.4);
-      g.userData.muzzle = marker(p.body, 0, d.hipY + d.th * 0.6, d.td);
-    } else if (kind === "flame") {
-      g = humanoid({ H: 6, pal, radius: 1.7, wide: 0.36, deep: 1.1, skin: 0x9e0000, shirt: 0x6e0000, sleeve: 0x7e0a00, pants: 0x3a0a05, shoe: 0x1a0a05, hand: 0x9e0000, mouth: 0xffffff, mouthW: 0.56, mouthH: 0.12, armK: 1.4, legK: 1.3 });
-      const d = g.userData.dims, p = g.userData.parts;
-      const flames = [];
-      flame(p.head, -d.hs * 0.28, d.hs, 0, 0.32, pal, flames);
-      flame(p.head, d.hs * 0.05, d.hs, -d.hs * 0.15, 0.4, pal, flames);
-      flame(p.head, d.hs * 0.3, d.hs, d.hs * 0.12, 0.28, pal, flames);
-      flame(p.armL, 0, 0.05, 0, 0.36, pal, flames);
-      flame(p.armR, 0, 0.05, 0, 0.36, pal, flames);
-      // glowing cracks in the chest
-      const ember = pal.get(0xf48d0d, 0xc94210);
-      [[-0.22, 0.78, 0.5], [-0.1, 0.62, -0.6], [0.04, 0.47, 0.5], [0.17, 0.32, -0.5], [0.28, 0.2, 0.4]].forEach(([x, y, r]) => {
-        const c = box(p.body, d.tw * 0.16, d.th * 0.06, 0.03, ember, d.tw * x, d.hipY + d.th * y, d.td / 2 + 0.015, false);
-        c.rotation.z = r;
-      });
-      g.userData.flames = flames;
-      g.userData.muzzle = marker(p.head, 0, d.hs * 0.27, d.hs * 0.6);
-    } else if (kind === "glide") {
-      g = humanoid({ H: 6, pal, radius: 1.7, wide: 0.36, skin: 0x1bff20, shirt: 0x12c016, sleeve: 0x16d01a, hand: 0x1bff20, mouth: 0x000000, armK: 1.3, noLegs: true });
-      const d = g.userData.dims, p = g.userData.parts;
-      // tail of shrinking blocks instead of legs (it hovers)
-      const tailM = [pal.get(0x12c016), pal.get(0x0e9a12), pal.get(0x0a7a0d)];
-      let y = d.hipY, w = d.tw * 0.9;
-      for (let i = 0; i < 4; i++) {
-        const h = d.hipY * 0.22;
-        box(p.body, w, h, w * 0.6, tailM[Math.min(2, i)], 0, y - h / 2, -i * 0.12);
-        y -= h;
-        w *= 0.72;
-      }
-      const emitter = pal.get(0xff0000, 0xcc0000);
-      box(p.head, d.hs * 0.22, d.hs * 0.16, 0.08, emitter, 0, d.hs * 0.86, d.fz, false);
-      g.userData.muzzle = marker(p.head, 0, d.hs * 0.86, d.fz + 0.2);
-    } else if (kind === "king") {
-      // the Block King: a huge block zombie with a gold crown and a red robe
-      g = humanoid({ H: 6.5, pal, radius: 2.0, wide: 0.42, deep: 1.2, headK: 1.15, skin: 0x2f8a36, shirt: 0xb3140e, sleeve: 0x8f0f09, pants: 0x5a0a06, shoe: 0x1a0a05, hand: 0x2f8a36, mouth: 0x000000, mouthW: 0.55, armK: 1.45, legK: 1.35 });
-      const d = g.userData.dims, p = g.userData.parts;
-      const gold = pal.get(0xffe500, 0x3a3000), gem = pal.get(0xff1a1a, 0x660000), white = pal.get(0xf4f4f4);
-      const hs = d.hs;
-      box(p.head, hs * 1.08, hs * 0.18, hs * 1.08, gold, 0, hs + hs * 0.09, 0); // crown band
-      for (const [x, z] of [[-0.4, 0.4], [0, 0.4], [0.4, 0.4], [-0.4, -0.4], [0.4, -0.4], [0, -0.4], [-0.4, 0], [0.4, 0]]) box(p.head, hs * 0.18, hs * 0.26, hs * 0.18, gold, x * hs, hs + hs * 0.3, z * hs);
-      box(p.head, hs * 0.16, hs * 0.16, 0.05, gem, 0, hs + hs * 0.09, hs * 0.55, false);
-      // gold trim + white fur collar
-      box(p.body, d.tw * 1.06, d.th * 0.1, d.td * 1.06, white, 0, d.hipY + d.th * 0.96, 0);
-      box(p.body, d.tw * 0.12, d.th * 0.9, 0.04, gold, 0, d.hipY + d.th * 0.48, d.td / 2 + 0.02, false);
-      box(p.body, d.tw * 1.04, d.th * 0.06, d.td * 1.04, gold, 0, d.hipY + 0.06, 0);
-      // cape
-      box(p.body, d.tw * 1.1, d.th + d.hipY * 0.8, 0.08, pal.get(0x8f0f09), 0, d.hipY + d.th / 2 - d.hipY * 0.38, -d.td / 2 - 0.06);
-      g.userData.muzzle = marker(p.head, 0, hs * 0.5, hs);
-    } else {
-      // bounty: hooded outlaw with a target on the chest
-      g = humanoid({ H: 1.9, pal, radius: 0.45, skin: 0x7bac00, shirt: 0x1d1d22, sleeve: 0x26262c, pants: 0x2a2a30, shoe: 0x111111, eye: 0xff0000, eyeGlow: 0xaa0000, mouth: 0x101010 });
-      const d = g.userData.dims, p = g.userData.parts;
-      const hood = pal.get(0x141418);
-      box(p.head, d.hs * 1.18, d.hs * 0.18, d.hs * 1.18, hood, 0, d.hs * 1.02, -d.hs * 0.04);
-      box(p.head, d.hs * 0.12, d.hs * 1.05, d.hs * 1.1, hood, -d.hs * 0.56, d.hs * 0.48, -d.hs * 0.06);
-      box(p.head, d.hs * 0.12, d.hs * 1.05, d.hs * 1.1, hood, d.hs * 0.56, d.hs * 0.48, -d.hs * 0.06);
-      box(p.head, d.hs * 1.18, d.hs * 1.05, d.hs * 0.14, hood, 0, d.hs * 0.48, -d.hs * 0.6);
-      // cloak tail
-      box(p.body, d.tw * 1.05, d.th + d.hipY * 0.55, 0.05, pal.get(0x18181c), 0, d.hipY + d.th / 2 - d.hipY * 0.27, -d.td / 2 - 0.03);
-      // bullseye
-      const zf = d.td / 2;
-      box(p.body, d.tw * 0.52, d.tw * 0.52, 0.02, pal.get(0xff0000, 0x550000), 0, d.hipY + d.th * 0.55, zf + 0.01, false);
-      box(p.body, d.tw * 0.34, d.tw * 0.34, 0.02, pal.get(0xffffff), 0, d.hipY + d.th * 0.55, zf + 0.02, false);
-      box(p.body, d.tw * 0.16, d.tw * 0.16, 0.02, pal.get(0xff0000, 0x550000), 0, d.hipY + d.th * 0.55, zf + 0.03, false);
-    }
-    return g;
-  }
-
-  // ---------------------------------------------------------------- minion
-  function minion() {
-    const pal = palette();
-    const g = new T.Group();
-    const cyan = pal.get(0x00fff9), cyanD = pal.get(0x00b8b4), dark = pal.get(0x1c2a2a), black = pal.get(0x000000);
-    const legL = pivot(g, -0.15, 0.32, 0), legR = pivot(g, 0.15, 0.32, 0);
-    for (const l of [legL, legR]) { box(l, 0.14, 0.28, 0.16, dark, 0, -0.16, 0); box(l, 0.17, 0.06, 0.22, black, 0, -0.29, 0.03); }
-    const body = pivot(g, 0, 0, 0);
-    box(body, 0.66, 0.66, 0.6, cyan, 0, 0.32 + 0.33, 0);
-    box(body, 0.13, 0.13, 0.02, black, -0.15, 0.78, 0.31, false);
-    box(body, 0.13, 0.13, 0.02, black, 0.15, 0.78, 0.31, false);
-    box(body, 0.3, 0.05, 0.02, black, 0, 0.58, 0.31, false);
-    box(body, 0.5, 0.06, 0.62, cyanD, 0, 0.42, 0, false);
-    const head = pivot(body, 0, 0.98, 0);
-    box(head, 0.04, 0.2, 0.04, dark, 0, 0.1, 0, false);
-    box(head, 0.09, 0.09, 0.09, pal.get(0x00fff9, 0x00a8a4), 0, 0.24, 0, false);
-    const armL = pivot(body, 0.39, 0.86, 0), armR = pivot(body, -0.39, 0.86, 0);
-    box(armL, 0.12, 0.32, 0.12, cyanD, 0, -0.16, 0);
-    box(armR, 0.12, 0.2, 0.12, cyanD, 0, -0.1, 0);
-    // arm cannon bolted to the body so it always points forward
-    box(body, 0.15, 0.15, 0.48, dark, -0.47, 0.66, 0.16);
-    box(body, 0.08, 0.08, 0.12, black, -0.47, 0.66, 0.44);
-    g.userData = {
-      parts: { body, head, armL, armR, legL, legR }, armBase: 0, radius: 0.4, height: 1.2, mats: pal.list,
-      headTop: marker(head, 0, 0.3, 0), muzzle: marker(body, -0.47, 0.66, 0.52),
-    };
     return g;
   }
 
@@ -670,8 +648,7 @@
         break;
       case "pellet": tracer(0.04, 0.4, 0xffdd78); break;
       case "goo": {
-        const m = new T.Mesh(GOO_GEO, shared(0x6cff2a, { emissive: 0x2a8a00, flatShading: true }));
-        g.add(m);
+        box(g, 0.4, 0.4, 0.4, shared(0x6cff2a, { emissive: 0x2a8a00 }), 0, 0, 0, false).rotation.set(0.5, 0.6, 0.2);
         box(g, 0.5, 0.5, 0.5, glow(0x6cff2a, 0.25), 0, 0, 0, false);
         break;
       }
@@ -859,55 +836,6 @@
     };
   }
 
-
-  // ---------------------------------------------------------------- new zombies (types 7-10)
-  //  7 Splitter: big orange block that breaks into three minis
-  //  8 Boomer:   red, TNT strapped to its chest
-  //  9 Spitter:  yellow, spits green goo from a distance
-  // 10 Shield guy: grey, hides behind a black block shield
-  function newZombie(t) {
-    const pal = palette();
-    const base = { pal, creepy: true, mouth: 0x2a0808, mouthW: 0.36, mouthH: 0.1, mouthX: 0.02, armBase: -PI / 2, shoe: 0x1b1712 };
-    let g;
-    if (t === 7) {
-      g = humanoid(Object.assign(base, { H: 2.3, radius: 0.6, wide: 0.42, deep: 1.3, headK: 1.0, armK: 1.3, legK: 1.25, skin: 0xff8a00, shirt: 0xc46600, sleeve: 0xb05a00, pants: 0x6b3a10, hand: 0xff9a20 }));
-      const d = g.userData.dims, p = g.userData.parts, crack = pal.get(0x3a1800);
-      // dark seams showing where it will break apart
-      box(p.body, 0.04, d.th * 1.02, d.td * 1.02, crack, 0, d.hipY + d.th / 2, 0, false);
-      box(p.body, d.tw * 1.02, 0.04, d.td * 1.02, crack, 0, d.hipY + d.th * 0.55, 0, false);
-      box(p.head, d.hs * 1.02, 0.03, d.hs * 1.02, crack, 0, d.hs * 0.4, 0, false);
-      box(p.head, 0.03, d.hs * 1.02, d.hs * 1.02, crack, d.hs * 0.12, d.hs / 2, 0, false);
-    } else if (t === 8) {
-      g = humanoid(Object.assign(base, { H: 1.8, radius: 0.45, skin: 0xe8231a, shirt: 0x4a3a30, sleeve: 0x3e3028, pants: 0x2a2a2a, hand: 0xd01d15, mouth: 0x000000 }));
-      const d = g.userData.dims, p = g.userData.parts;
-      const tnt = box(p.body, d.tw * 0.75, d.th * 0.55, 0.22, pal.get(0xc8160e), 0, d.hipY + d.th * 0.5, d.td / 2 + 0.11);
-      box(p.body, d.tw * 0.77, d.th * 0.16, 0.23, pal.get(0xf2f2f2), 0, d.hipY + d.th * 0.52, d.td / 2 + 0.11, false);
-      box(p.body, 0.03, 0.18, 0.03, pal.get(0x111111), d.tw * 0.2, d.hipY + d.th * 0.86, d.td / 2 + 0.12, false);
-      g.userData.fuse = box(p.body, 0.07, 0.07, 0.07, pal.get(0xffdd78, 0xffaa00), d.tw * 0.2, d.hipY + d.th * 0.97, d.td / 2 + 0.12, false);
-      void tnt;
-    } else if (t === 9) {
-      g = humanoid(Object.assign(base, { H: 1.75, radius: 0.45, headK: 1.15, skin: 0xffd400, shirt: 0x5a5a2a, sleeve: 0x4e4e24, pants: 0x33331a, hand: 0xe6be00, mouth: 0x4cff1a, mouthW: 0.5, mouthH: 0.16 }));
-      const d = g.userData.dims, p = g.userData.parts;
-      const goo = pal.get(0x6cff2a, 0x2a8a00);
-      box(p.head, d.hs * 0.55, d.hs * 0.22, d.hs * 0.2, goo, 0, d.hs * 0.12, d.hs * 0.48, false); // drool
-      box(p.body, d.tw * 0.5, d.th * 0.4, 0.12, pal.get(0xd8c000), 0, d.hipY + d.th * 0.35, d.td / 2 + 0.05); // bloated belly
-      g.userData.muzzle = marker(p.head, 0, d.hs * 0.27, d.hs * 0.7);
-    } else {
-      g = humanoid(Object.assign(base, { H: 1.95, radius: 0.5, wide: 0.33, skin: 0x9aa3ad, shirt: 0x3d444c, sleeve: 0x353b42, pants: 0x262a2f, hand: 0x8a939d }));
-      const d = g.userData.dims, p = g.userData.parts;
-      // the shield is bolted to the body so it always faces forward
-      const sh = pivot(p.body, 0, 0, d.td / 2 + 0.42);
-      box(sh, 1.05, 1.45, 0.12, pal.get(0x141414), 0, d.hipY + d.th * 0.45, 0);
-      box(sh, 0.9, 0.08, 0.14, pal.get(0x3a3a3a), 0, d.hipY + d.th * 0.45 + 0.5, 0, false);
-      box(sh, 0.9, 0.08, 0.14, pal.get(0x3a3a3a), 0, d.hipY + d.th * 0.45 - 0.5, 0, false);
-      box(sh, 0.3, 0.12, 0.14, pal.get(0x6a6f75), 0, d.hipY + d.th * 0.45 + 0.25, 0, false); // view slit
-      g.userData.shield = sh;
-      // helmet
-      box(p.head, d.hs * 1.16, d.hs * 0.42, d.hs * 1.16, pal.get(0x0d0d0d), 0, d.hs * 0.86, 0);
-      g.userData.height = d.neckY + d.hs * 1.08;
-    }
-    return g;
-  }
 
   // ---------------------------------------------------------------- new gadgets
   function mine() {

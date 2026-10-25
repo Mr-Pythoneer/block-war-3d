@@ -15,7 +15,7 @@
   const MAX_VOICES = 32;
   const listener = { x: 0, z: 0, yaw: 0 };
   const lastPlay = {};
-  const GAP = { hit: 0.025, op: 0.04, mg: 0.05, turret: 0.06, minion_shot: 0.05, zombie_groan: 0.4, zombie_spawn: 0.15, boss_hit: 0.05, kill: 0.03, empty: 0.12, shield_hit: 0.06, player_hurt: 0.15, pickup: 0.05 };
+  const GAP = { block_hop: 0.06, block_land: 0.1, block_pop: 0.03, hit: 0.025, op: 0.04, mg: 0.05, turret: 0.06, minion_shot: 0.05, zombie_groan: 0.4, zombie_spawn: 0.15, boss_hit: 0.05, kill: 0.03, empty: 0.12, shield_hit: 0.06, player_hurt: 0.15, pickup: 0.05 };
   const rnd = (a, b) => a + Math.random() * (b - a);
 
   function init() {
@@ -216,6 +216,10 @@
     split(o, t) { noise(o, t, 0.15, 0.6, "bandpass", 1500, 500, 2); tone(o, "square", 400, 900, t, 0.12, 0.12); return 0.2; },
     mana_empty(o, t) { tone(o, "sine", 600, 140, t, 0.35, 0.25); noise(o, t, 0.3, 0.15, "bandpass", 1200, 300, 3); return 0.4; },
     mana_back(o, t) { tone(o, "sine", 520, 780, t, 0.18, 0.15); tone(o, "sine", 780, 1040, t + 0.08, 0.18, 0.12); return 0.3; },
+    // living cubes
+    block_hop(o, t) { const f = rnd(260, 360); tone(o, "sine", f, f * 1.9, t, 0.07, 0.3); tone(o, "sine", f * 1.9, f * 0.9, t + 0.06, 0.08, 0.22); return 0.16; },
+    block_land(o, t) { noise(o, t, 0.2, 0.7, "lowpass", 380, 90, 1, 0.003, brown); tone(o, "sine", rnd(85, 110), 42, t, 0.16, 0.6); return 0.24; },
+    block_pop(o, t) { noise(o, t, 0.06, 0.8, "highpass", 1800, 5000, 0.8); tone(o, "square", rnd(700, 900), 1700, t, 0.06, 0.16); for (let i = 0; i < 3; i++) tone(o, "triangle", rnd(1800, 3200), null, t + 0.04 + i * 0.03, 0.05, 0.08); tone(o, "sine", 160, 60, t, 0.12, 0.35); return 0.2; },
     minion_spawn(o, t) { tone(o, "square", 300, 1200, t, 0.2, 0.16); tone(o, "sine", 1200, 1600, t + 0.18, 0.1, 0.2); return 0.32; },
   };
 

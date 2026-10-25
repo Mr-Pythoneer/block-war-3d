@@ -9,10 +9,10 @@
 <meta name="apple-mobile-web-app-title" content="Block War 3D">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Block War 3D</title>
-<meta name="description" content="Block War 3D: a blocky first-person zombie shooter you play in the browser. Survive the horde, earn money, buy guns, beat the bosses.">
+<meta name="description" content="Block War 3D: a goofy, blocky first-person shooter you play in the browser. Squares with eyes hop at you; survive, earn money, buy guns, beat the giant cube bosses.">
 <meta name="theme-color" content="#16202e">
 <meta property="og:title" content="Block War 3D">
-<meta property="og:description" content="A blocky first-person zombie shooter. Free, in your browser.">
+<meta property="og:description" content="Squares with eyes, now in 3D. A goofy blocky shooter, free in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mr-pythoneer.github.io/block-war-3d/">
 <meta property="og:image" content="https://mr-pythoneer.github.io/block-war-3d/og.png">
@@ -307,7 +307,7 @@
     <div class="stat bounty hidden" id="bountyStat"><span class="label">Bounty</span><span class="val num" id="bounty">0</span></div>
   </div>
   <div id="bossbars"></div>
-  <div id="radarWrap"><canvas id="radar" width="216" height="162"></canvas><div class="cap"><span>battle field</span><span id="zcount">0 zombies</span></div></div>
+  <div id="radarWrap"><canvas id="radar" width="216" height="162"></canvas><div class="cap"><span>battle field</span><span id="zcount">0 blocks</span></div></div>
   <div id="crosshair"><i></i><i></i><i></i><i></i></div>
   <div id="hitmarker"></div>
   <div id="bottom">
@@ -340,7 +340,6 @@
 <!-- Title -->
 <div id="title" class="screen hidden">
   <h1 class="title">BLOCK WAR 3D</h1>
-  <div class="tag">Zombie edition</div>
   <button class="btn big" id="startBtn">START BATTLE</button>
   <div class="controls kbOnly">
     <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp;<kbd>Shift</kbd> sprint</div>
@@ -420,12 +419,12 @@
           <tr><td><kbd>V</kbd></td><td>First / third person</td></tr>
         </table>
         <h3>Money</h3>
-        <p>Money is kills: 2 to 6 a zombie, more for the tough ones. Shoot gold ore for 100–250 (yellow on the map). You start with 500. The game never ends; see how long you last.</p>
+        <p>Money is kills: 2 to 6 a block, more for the tough ones. Shoot gold ore for 100–250 (yellow on the map). You start with 500. The game never ends; see how long you last.</p>
         <h3>Pickups</h3>
         <ul>
           <li>Apple: +1 HP. Golden apple: +5 HP.</li>
           <li>Green laser wall: +2 HP every second you stand in it (up to 30 HP).</li>
-          <li>Red laser wall: hurts you, but shreds zombies. Lure them in.</li>
+          <li>Red laser wall: hurts you, but shreds blocks. Lure them in.</li>
         </ul>
       </div>
       <div>
@@ -438,16 +437,16 @@
         </table>
         <p>You can shop during boss fights; the bosses wait for you. Beating any boss starts a new round (other bosses stay). TNT, the turret and the sniper hit bosses 5 times harder.</p>
         <h3>Shop</h3>
-        <p>Opening the shop ends the round and the horde retreats. Closing it starts a new round: +4 HP (if the round lasted at least 20 s) and the boss timers restart. Some upgrades make the horde bigger, and so does surviving: more zombies at 3, 6 and 10 minutes.</p>
+        <p>Opening the shop ends the round and the horde retreats. Closing it starts a new round: +4 HP (if the round lasted at least 20 s) and the boss timers restart. Some upgrades make the horde bigger, and so does surviving: more blocks at 3, 6 and 10 minutes.</p>
         <h3>New stuff</h3>
         <table>
-          <tr><td>Splitter</td><td>Big orange block. Breaks into 3 minis when it dies.</td></tr>
-          <tr><td>Boomer</td><td>Red, with TNT on its chest. Blows up next to you. Shoot it when it's near other zombies.</td></tr>
-          <tr><td>Spitter</td><td>Yellow. Stays back and spits goo that slows you down.</td></tr>
-          <tr><td>Shield guy</td><td>Blocks bullets from the front. Go around it, or use TNT, mines, the sniper or the laser gun.</td></tr>
+          <tr><td>Splitter</td><td>Big orange block made of smaller blocks. Breaks into 3 minis when it dies.</td></tr>
+          <tr><td>Boomer</td><td>A TNT block with a face. Blows up next to you. Shoot it when it's near other blocks.</td></tr>
+          <tr><td>Spitter</td><td>A slime cube. Stays back and spits goo that slows you down.</td></tr>
+          <tr><td>Shield guy</td><td>A grey block pushing a wall. Blocks bullets from the front. Go around it, or use TNT, mines, the sniper or the laser gun.</td></tr>
           <tr><td>Block King</td><td>Beat 3 bosses and he comes 20 s into the next round. Drops blocks where the red squares are and calls minis.</td></tr>
         </table>
-        <p>New zombies start showing up the longer you survive.</p>
+        <p>New kinds of blocks start showing up the longer you survive.</p>
       </div>
     </div>
   </div>

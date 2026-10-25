@@ -1,8 +1,7 @@
 # Block War 3D
 
-A first-person 3D zombie remake of the Scratch game **Block War** (`Block war game 19.0.sb3`).
-Same shop, prices, guns, bosses, timers and pickups. Now it's a night battlefield and the
-blocks are zombies.
+A first-person 3D remake of the Scratch game **Block War** (`Block war game 19.0.sb3`).
+Same shop, guns, bosses, timers and pickups. Like the original, everything is a block with eyes.
 
 ## Play
 **Online:** https://mr-pythoneer.github.io/block-war-3d/ works on computers and on phones/tablets
@@ -12,7 +11,7 @@ blocks are zombies.
 with your right thumb to look, hold FIRE to shoot (you can drag on it to aim), AIM for sights /
 scope, and tap a gun or gadget at the bottom to use it. SHOP / INFO / CAM / pause are top right.
 Touch screens get a small aim assist, no shadows by default (Pause > Shadows turns them on), a
-lower render resolution and at most 70 zombies at once. Add `?mobile=1` or `?desktop=1` to the
+lower render resolution and at most 70 blocks at once. Add `?mobile=1` or `?desktop=1` to the
 URL to force a mode. On iPhone, Share > Add to Home Screen plays it full screen.
 
 **Offline:** run `python3 tools/build.py`, then double-click `dist/block_war_3d.html`. It's one
@@ -39,7 +38,7 @@ Click **START BATTLE**. The game grabs the mouse; press Esc to get it back.
 | File | What it is |
 |---|---|
 | `src/game.js` | all the game logic. Every number is from the Scratch project unless a comment says `3D:` |
-| `src/models.js` | the blocky 3D models (zombies, bosses, guns, arena, ...) |
+| `src/models.js` | the 3D models (living cubes, bosses, guns, arena, ...) |
 | `src/audio.js` | all sound, generated in code (no audio files) |
 | `src/index.html` | HUD, shop, menus |
 | `vendor/three.min.js` | three.js r149 (3D engine) |
@@ -52,13 +51,13 @@ While working on it, serve the folder (`python3 -m http.server 8777`) and open
 
 ## Kept from the original
 - Money = kills, gold ore pays 100–250, and you start with 500. (The Scratch version said "you win" at 1000; this one is endless.)
-- Six zombie types with the original lives and speeds, picked by the same random chain.
+- Six enemy types (mini, normal and big, each with or without a helmet) with the original lives and speeds, picked by the same random chain.
 - Health 14 + 4 at the start. Every "Start wave" (closing the shop) gives +4.
-- Damage cooldowns: zombies, fire balls and the Flame Boss 1 per second. Laser, boss laser and bounty every 1.5 s. Helmet halves damage.
+- Damage cooldowns: enemies, fire balls and the Flame Boss 1 per second. Laser, boss laser and bounty every 1.5 s. Helmet halves damage.
 - Bosses each round: Snow Boss at 35 s, Wall Boss at 100 s, Flame Boss at 200 s. Glide Boss only when a round starts at exactly 300–305 money. Beating any boss restarts the round. Flame and Glide clear the horde.
 - Turret, sniper and TNT hit bosses ×5. Turret does 500 shots, 3° turn each, then 100 s cooldown. Shield lasts 5 s with a 12.5 s cooldown. Fortress holds 100 s with a warning at 5 s, then 150 s cooldown.
 - Minion copies your trigger, has 100 HP and comes back after 25 s. Damage and Self heal make the horde bigger (extra spawners).
-- Apples +1, golden apples +5. The red laser wall hurts you and shreds zombies; the second laser heals (+5/s).
+- Apples +1, golden apples +5. The red laser wall hurts you and shreds blocks; the second laser heals (+5/s).
 
 ## New stuff (not in the Scratch game)
 **Sprint + mana**: hold Shift while moving to run at 11 m/s instead of 7. It burns 25 mana a
@@ -70,26 +69,35 @@ Shop **page 3**:
 | Item | Price | What it does |
 |---|---|---|
 | Shotgun (6) | 1200$ | 7 bullets at once, 2 damage each |
-| Laser gun (0) | 2500$ | instant red beam through every zombie in a line (15 each, like the Laser), bosses take 5x |
+| Laser gun (0) | 2500$ | instant red beam through every block in a line (15 each, like the Laser), bosses take 5x |
 | Land mine (F) | 600$ | 3 mines every round, armed after 1 s, TNT-sized blast |
-| Freeze bomb (E) | 1200$ | zombies within 5 m freeze for 4 s, bosses slow down; every 10 s |
-| Lucky block | 300$ | could be anything: money, HP, golden apples, double money, recharged gadgets, a jackpot... or 6 zombies |
+| Freeze bomb (E) | 1200$ | blocks within 5 m freeze for 4 s, bosses slow down; every 10 s |
+| Lucky block | 300$ | could be anything: money, HP, golden apples, double money, recharged gadgets, a jackpot... or 6 blocks |
 
-New zombies join the horde the longer you survive (from 20 s, 45 s, 90 s, 150 s):
-| Zombie | Colour | Lives | Notes |
+New blocks join the horde the longer you survive (from 20 s, 45 s, 90 s, 150 s):
+| Block | Looks like | Lives | Notes |
 |---|---|---|---|
 | Splitter | orange | 10 | breaks into 3 minis |
-| Boomer | red | 6 | walks up to you and explodes (3 damage). Shooting it blows up the zombies around it |
+| Boomer | red | 6 | walks up to you and explodes (3 damage). Shooting it blows up the blocks around it |
 | Spitter | yellow | 6 | keeps its distance, spits goo (1 damage + slow) |
 | Shield guy | grey | 10 | blocks bullets from the front. Flank it, or use TNT, mines, sniper, laser gun |
 
 **Block King**: beat 3 bosses and he shows up 20 s into the next round. 800–900 lives, calls up
 minis, drops blocks where red squares appear (2 damage; the blocks stay as cover for 4 s). Pays 100–150.
 
+## Living cubes (v6)
+The enemies used to be humanoid zombies; now they're the Scratch squares again, as 3D cubes with black eyes:
+- **Minis** hop fast, **normal** blocks slide with a wobble, **big** blocks thud along in heavy hops. Helmet versions wear a black cap.
+- They **drop in from the sky** (a dark spot shows where), wobble like jelly when hit, and **burst into a pile of little cubes** when they die.
+- Splitter is a block made of 8 smaller blocks, Boomer a TNT block with a face, Spitter a see-through slime cube, Shield guy a grey block pushing a wall.
+- Bosses are giant cubes: Snow (carrot nose, stick arms), Wall (bricks), Flame (blocky flames), Glide (floats on thrusters), Block King (crown and cape). They fall in with a thud and flatten when beaten.
+- You're a lime cube too (third person), and the minion is a hopping cyan cube.
+- Groans are gone: blocks boing when they hop, thud when they land and pop when they break.
+
 ## Balance changes (v4): faster upgrades, endless
 - **No "you win"** at 1000 money. It's an endless game.
 - **Shop works during boss fights.** Bosses showed up every round and kept the shop locked about 40% of the time, so you sat on the pistol. Bosses wait while you shop; a Flame or Glide Boss still keeps the horde away afterwards.
-- **Every kill pays by zombie type**, whatever killed it: mini 2, mini helmet 3, normal 4, normal helmet 5, big 5, big helmet 6, Splitter 5, Boomer 3, Spitter 4, Shield guy 6. (Was 4 / 2 / 1 for everything else, and 1 for laser, TNT and sniper kills.)
+- **Every kill pays by enemy type**, whatever killed it: mini 2, mini helmet 3, normal 4, normal helmet 5, big 5, big helmet 6, Splitter 5, Boomer 3, Spitter 4, Shield guy 6. (Was 4 / 2 / 1 for everything else, and 1 for laser, TNT and sniper kills.)
 - **Cheaper gear**: Machine gun 750 → 400, OP gun 1000 → 900, TNT 750 → 500, Sniper and SHIELD 1500 → 1000, Turret 2000 → 1500, Port a fortress 4000 → 3000, Helmet 3000 → 2000, Damage / Self heal / Armored 5000 → 4000, Shotgun 1200 → 700, Laser gun 2500 → 1800, Land mine 600 → 400, Freeze bomb 1200 → 800.
 - A one-time hint tells you to shoot gold ore the first time it appears.
 - Measured with a bot that ignores gold: before, the first gun upgrade took 76–123 s; now the Machine gun is affordable at the start, the Shotgun at about 1 minute, the OP gun at 1–2 minutes.
@@ -99,16 +107,16 @@ minis, drops blocks where red squares appear (2 damage; the blocks stay as cover
 - **Boss rewards** were tiny next to one gold ore (100–250): Snow 15–20 → 60–80, Wall 30–40 → 120–150, Flame 50–60 → 200–250, Glide 50–60 → 250–300, Block King 100–150 → 400–500.
 - **Bounty** pays 250 (it cost 150 and paid 100, so winning lost you money).
 - **Machine gun** fires faster (it did 13 damage a second against the pistol's 12). **Shotgun** pellets 2 → 3.
-- **Swarms hurt**: 1 a second for one zombie, +0.5 for each extra zombie on you (max 3).
+- **Swarms hurt**: 1 a second for one block, +0.5 for each extra block on you (max 3).
 - **Green laser** heals +2 a second, up to 30 HP (was +5 a second with no limit).
 - **Shop heal**: closing the shop only gives +4 HP if the round lasted 20 s (open/close spam was free healing).
 - **The horde grows**: +1 spawner at 3, 6 and 10 minutes survived.
 - **Port a fortress** 7500$ → 4000$, cooldown 150 s → 90 s. **Damage** upgrade adds 1 extra spawner instead of 2. **Lucky block** 300$ → 400$, with fewer free helmets and jackpots and more bad luck.
 
 ## Changed for 3D (and why)
-- **Speeds**: 1 Scratch px/tick = 1.4 m/s, so you move at 7 m/s and zombies keep their speed relative to you. The Wall, Flame and Glide bosses got faster; at the original speed they barely moved.
-- **Zombies rise out of the ground** at least 8 m away instead of appearing on top of you.
-- **TNT explodes** (4.5 m blast, 15 damage) instead of sliding through zombies in a straight line.
+- **Speeds**: 1 Scratch px/tick = 1.4 m/s, so you move at 7 m/s and enemies keep their speed relative to you. The Wall, Flame and Glide bosses got faster; at the original speed they barely moved.
+- **Blocks drop in from the sky** (with a shadow where they'll land) at least 8 m away instead of appearing on top of you.
+- **TNT explodes** (4.5 m blast, 15 damage) instead of sliding through enemies in a straight line.
 - **Second laser wall is green** so you can tell the healing one from the hurting one (both were red).
 - **Bounty** takes every hit. The original only counted one hit per second, which made it impossible to kill before it left.
 - **Damage enchant is ×2** as written on its card. In Scratch it doubled every frame forever, so it one-shot everything. If you liked that, change `G.dmgMult = 2` in `buy()`.
