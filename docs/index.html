@@ -1963,7 +1963,7 @@
   const faceYaw = (dx, dz) => Math.atan2(dx, dz); // models face +Z
 
   // Cubes don't walk. They hop (minis), slide with a wobble (normal ones), or thud along in big
-  // heavy hops (big ones and bosses). `c` keeps the animation state: hop phase, squash, jelly.
+  // heavy hops (big ones and bosses). `c` keeps the animation state: hop phase, squash, wobble spring.
   const GAIT = {
     hop: { stride: 1.0, height: 0.38, squash: 0.25 },
     slide: { stride: 1.6, height: 0, squash: 0, wobble: 0.08 },
@@ -1971,6 +1971,13 @@
     float: { stride: 3, height: 0, squash: 0 },
   };
   const DROP_H = 9; // blocks fall in from this high
+  // a hit squishes the block; rapid fire keeps it squished instead of shaking it
+  function jellyKick(c, k) { c.jv = Math.max(-3.2, (c.jv || 0) - 1.6 * k); }
+  // the white hit flash: each hit warms it up and it cools off smoothly, so rapid fire gives a
+  // steady glow instead of a strobe
+  const hitFlash = (c) => { c.flash = Math.min(1, (c.flash || 0) + 0.5); };
+  const flashLevel = (f) => (f > 0 ? Math.min(1, f) * 0.55 : 0);
+  const FLASH_COOL = 2.5; // per second
   function animateBlock(c, moved, dt) {
     const ud = c.mesh.userData, body = ud.parts && ud.parts.body;
     if (!body) return false;
@@ -1979,7 +1986,8 @@
     c.hop = c.hop || 0;
     if (g.height > 0) {
       const before = c.hop;
-      c.hop += moved / (g.stride * Math.max(0.7, Math.sqrt(edge)));
+      if (moved > 1e-4) c.hop += moved / (g.stride * Math.max(0.7, Math.sqrt(edge)));
+      else if (c.hop % 1 > 0) c.hop = Math.min(Math.ceil(c.hop), c.hop + dt * 2.5); // come back down
       if (Math.floor(c.hop) > Math.floor(before)) { c.squash = g.squash; landed = true; }
       const air = Math.sin((c.hop % 1) * Math.PI);
       y = air * g.height * edge;
@@ -1991,9 +1999,11 @@
       sy += Math.sin(c.hop * TAU * 2) * 0.03;
     }
     c.squash = Math.max(0, (c.squash || 0) - dt * 3.5);
-    c.jelly = Math.max(0, (c.jelly || 0) - dt * 3);
-    const jelly = c.jelly > 0 ? Math.sin(c.jelly * 28) * c.jelly * 0.25 : 0;
-    sy *= 1 - c.squash * 0.55 - jelly;
+    // jelly wobble: a damped spring (about 3.5 bounces a second) that hits push on
+    c.jv = c.jv || 0; c.jx = c.jx || 0;
+    c.jv += (-480 * c.jx - 15 * c.jv) * dt;
+    c.jx = clamp(c.jx + c.jv * dt, -0.22, 0.16);
+    sy *= 1 - c.squash * 0.55 + c.jx;
     sy = Math.max(0.35, sy);
     const sxz = 1 / Math.sqrt(sy); // squash keeps the volume, so it bulges out
     body.position.y = (ud.lift || 0) + y;
@@ -2587,7 +2597,7 @@
     const ud = mesh.userData;
     const e = { type, hp: ZTYPES[type].hp, speed: ZTYPES[type].speed * SPEED * rand(0.92, 1.08), mesh,
       r: ud.radius || 0.45, h: ud.height || 1.8, x, z, yaw: Math.random() * TAU,
-      emerge: 0, dying: 0, flash: 0, hazardT: 0, wander: null, hop: Math.random(), squash: 0, jelly: 0,
+      emerge: 0, dying: 0, flash: 0, hazardT: 0, wander: null, hop: Math.random(), squash: 0, jv: 0, jx: 0,
       frozen: 0, fuse: 0, spitT: rand(2, 3.5), strafe: Math.random() < 0.5 ? 1 : -1 };
     mesh.position.set(x, DROP_H, z);
     scene.add(mesh);
@@ -2619,8 +2629,8 @@
   function damageZombie(e, amount, how) {
     if (e.dying) return;
     e.hp -= amount;
-    e.flash = 0.08;
-    e.jelly = 1;
+    hitFlash(e);
+    jellyKick(e, 1);
     SFX.play("hit", { x: e.x, z: e.z, vol: 0.8 });
     emit(e.x, e.mesh.position.y + e.h * 0.6, e.z, [ZCOLOR[e.type], ZCOLOR[e.type], 0xffffff], 3, 2.5, 0.08, 0.4);
     if (e.hp < 1) {
@@ -2670,11 +2680,13 @@
         if (e.dying >= 1) removeZombie(e);
         continue;
       }
-      if (e.flash > 0) { e.flash -= dt; setEmissive(m, 0xffffff, e.flash > 0 ? 0.65 : 0); if (e.flash <= 0 && e.frozen > 0) setEmissive(m, 0x3a8ac0, 0.7); }
+      if (e.flash > 0) { e.flash -= dt * FLASH_COOL; setEmissive(m, 0xffffff, flashLevel(e.flash)); if (e.flash <= 0 && e.frozen > 0) setEmissive(m, 0x3a8ac0, 0.7); }
       // frozen by a Freeze bomb: no moving, no biting
       if (e.frozen > 0 && e.emerge >= 1) {
         if (G.mode === "playing") e.frozen -= dt;
         if (e.frozen <= 0) setEmissive(m, 0xffffff, 0);
+        const fb = parts(m).body;
+        if (fb) fb.position.y = Math.max(m.userData.lift || 0, fb.position.y - dt * 6); // no hovering mid-hop
         if (Math.random() < 0.05) emit(e.x, e.h * rand(0.2, 1), e.z, [0xdff4ff, 0xa9d8f5], 1, 0.6, 0.06, 0.6, 1);
         continue;
       }
@@ -2883,8 +2895,8 @@
   }
   function damageBoss(b, amount) {
     b.hp -= amount;
-    b.flash = 0.08;
-    b.jelly = 0.6;
+    hitFlash(b);
+    jellyKick(b, 0.5);
     SFX.play("boss_hit", { x: b.x, z: b.z, vol: 0.7 });
     hitmarker(false);
     if (b.hp < 1) killBoss(b);
@@ -2974,7 +2986,7 @@
         G.trauma = Math.min(1, G.trauma + clamp(0.25 - dd / 60, 0, 0.18));
       }
       // hit flash; the Flame Boss cycles colour ("change color effect by 2")
-      if (b.flash > 0) b.flash -= dt;
+      if (b.flash > 0) b.flash -= dt * FLASH_COOL;
       if (b.kind === "flame") {
         b.hue = (b.hue + dt * 0.3) % 1;
         for (const mat of m.userData.mats || []) if (mat.userData && mat.userData.base === undefined) mat.userData.base = mat.color.getHex();
@@ -2985,7 +2997,7 @@
           if (hsl.s > 0.3) mat.color.setHSL((hsl.h + b.hue) % 1, hsl.s, hsl.l);
         }
       }
-      setEmissive(m, 0xffffff, b.flash > 0 ? 0.6 : 0);
+      setEmissive(m, 0xffffff, flashLevel(b.flash));
       // volleys of 1-3 shots, 0.1 s apart, then wait 1 or 2 s
       if (b.def.shot) {
         if (b.volleyLeft > 0) {
@@ -3495,7 +3507,8 @@
     if (!bounty) return;
     // 3D: the original only counted one hit per second, which made the target unkillable in 12 s
     bounty.hp -= n;
-    bounty.flash = 0.06;
+    hitFlash(bounty);
+    jellyKick(bounty, 1);
     hitmarker(false);
     SFX.play("boss_hit", { x: bounty.x, z: bounty.z, vol: 0.5 });
     if (bounty.hp <= 0) {
@@ -3538,8 +3551,8 @@
     b.mesh.position.set(b.x, 0, b.z);
     b.mesh.rotation.y = faceYaw(P.pos.x - b.x, P.pos.z - b.z);
     animateBlock(b, Math.hypot(b.x - ox, b.z - oz), dt);
-    if (b.flash > 0) b.flash -= dt;
-    setEmissive(b.mesh, 0xffffff, b.flash > 0 ? 0.6 : 0);
+    if (b.flash > 0) b.flash -= dt * FLASH_COOL;
+    setEmissive(b.mesh, 0xffffff, flashLevel(b.flash));
     setOpacity(b.mesh, b.visible ? 1 : 0.08 + Math.random() * 0.06);
     // hidden sprites can't touch anything in Scratch
     if (b.visible && G.mode === "playing" && Math.hypot(b.x - P.pos.x, b.z - P.pos.z) < b.r + PLAYER_R + 0.15) hurt(5, "bounty");
