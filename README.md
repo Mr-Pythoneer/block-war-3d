@@ -50,7 +50,7 @@ While working on it, serve the folder (`python3 -m http.server 8777`) and open
 `http://localhost:8777/src/index.html`.
 
 ## Kept from the original
-- Money = kills, gold ore pays 100–250, and you start with 500. (The Scratch version said "you win" at 1000; this one is endless.)
+- Money = kills and gold ore pays 100–250. (The Scratch version started you with 500 and said "you win" at 1000; this one starts you with 0 and is endless.)
 - Six enemy types (mini, normal and big, each with or without a helmet) with the original lives and speeds, picked by the same random chain.
 - Health 14 + 4 at the start. Every "Start wave" (closing the shop) gives +4.
 - Damage cooldowns: enemies, fire balls and the Flame Boss 1 per second. Laser, boss laser and bounty every 1.5 s. Helmet halves damage.

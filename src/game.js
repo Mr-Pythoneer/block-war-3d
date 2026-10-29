@@ -194,7 +194,7 @@
   // ---------------------------------------------------------------- game state
   const G = {
     mode: "loading", // title | playing | paused | shop | info | dead
-    money: 500, hp: 14, time: 0, timeAcc: 0, kills: 0,
+    money: 0, hp: 14, time: 0, timeAcc: 0, kills: 0,
     owned: {}, gun: 1, dmgMult: 1,
     helmet: 0, armored: false, selfheal: false,
     wave: false, spawners: 1, spawnT: [1],
@@ -2406,7 +2406,7 @@
     SFX.music(true);
     wipeWorld();
     Object.assign(G, {
-      money: 500, hp: 14, time: 0, timeAcc: 0, kills: 0, owned: {}, gun: 1, dmgMult: 1, helmet: 0, armored: false, selfheal: false,
+      money: 0, hp: 14, time: 0, timeAcc: 0, kills: 0, owned: {}, gun: 1, dmgMult: 1, helmet: 0, armored: false, selfheal: false,
       spawners: 1, fireT: 0.3, tntCd: 0, regenSelf: 0, regenArmor: 0, bountyTime: 0, bountySpawnT: 0, goldHinted: false, trauma: 0, recoil: 0, ads: 0,
       minesLeft: 0, freezeCd: 0, moneyMult: 1, moneyMultT: 0, bossKills: 0, kingDue: false, kingWarned: false, seenZ: {}, slowT: 0, luckyZombies: 0, pendingApples: 0,
     mana: 100, manaDelay: 0, exhausted: false, sprinting: false, sprintK: 0, hordeGrow: 0,
